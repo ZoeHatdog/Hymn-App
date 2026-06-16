@@ -1,0 +1,21 @@
+# Docker setup is planned but not required for the MVP.
+# Connect to PostgreSQL manually — see INSTRUCTIONS.md.
+#
+# When ready, uncomment and run: docker compose up -d
+#
+# services:
+#   postgres:
+#     image: postgres:16-alpine
+#     container_name: hymn-app-postgres
+#     restart: unless-stopped
+#     ports:
+#       - "5432:5432"
+#     environment:
+#       POSTGRES_USER: postgres
+#       POSTGRES_PASSWORD: password
+#       POSTGRES_DB: hymn_app
+#     volumes:
+#       - hymn_app_pgdata:/var/lib/postgresql/data
+#
+# volumes:
+#   hymn_app_pgdata:
