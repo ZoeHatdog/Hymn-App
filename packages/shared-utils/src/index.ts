@@ -1,6 +1,7 @@
 export interface ParsedHymnFile {
   title: string;
   author: string;
+  imageFolder: string | null;
   lyrics: string;
 }
 
@@ -8,6 +9,7 @@ export function parseHymnFile(content: string): ParsedHymnFile {
   const lines = content.split(/\r?\n/);
   let title = "Untitled";
   let author = "Unknown";
+  let imageFolder: string | null = null;
   const lyricsLines: string[] = [];
   let inLyrics = false;
 
@@ -19,6 +21,10 @@ export function parseHymnFile(content: string): ParsedHymnFile {
       }
       if (line.startsWith("author:")) {
         author = line.replace("author:", "").trim();
+        continue;
+      }
+      if (line.startsWith("image_folder:")) {
+        imageFolder = line.replace("image_folder:", "").trim() || null;
         continue;
       }
       if (line.trim() === "") {
@@ -33,6 +39,7 @@ export function parseHymnFile(content: string): ParsedHymnFile {
   return {
     title,
     author,
+    imageFolder,
     lyrics: lyricsLines.join("\n").trim(),
   };
 }

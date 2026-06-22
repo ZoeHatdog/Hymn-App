@@ -1,4 +1,4 @@
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyRequest } from "fastify";
 import type { Hymn, HymnSummary } from "@hymn-app/shared-types";
 import { sanitizeSearchQuery } from "@hymn-app/shared-utils";
 import { prisma } from "../db.js";
@@ -15,19 +15,44 @@ function toHymnSummary(hymn: {
   };
 }
 
-function toHymn(hymn: {
-  id: string;
-  title: string;
-  author: string;
-  lyrics: string;
-  createdAt: Date;
-  updatedAt: Date;
-}): Hymn {
+function buildImageUrl(request: FastifyRequest, imagePath: string): string | null {
+  const host = request.headers.host;
+  if (!host) {
+    return null;
+  }
+
+  const encodedPath = imagePath
+    .split("/")
+    .map((segment) => encodeURIComponent(segment))
+    .join("/");
+
+  return `${request.protocol}://${host}/api/assets/hymns/${encodedPath}`;
+}
+
+function buildImageUrls(request: FastifyRequest, imagePaths: string[]): string[] {
+  return imagePaths
+    .map((path) => buildImageUrl(request, path))
+    .filter((url): url is string => url !== null);
+}
+
+function toHymn(
+  request: FastifyRequest,
+  hymn: {
+    id: string;
+    title: string;
+    author: string;
+    lyrics: string;
+    imagePaths: string[];
+    createdAt: Date;
+    updatedAt: Date;
+  },
+): Hymn {
   return {
     id: hymn.id,
     title: hymn.title,
     author: hymn.author,
     lyrics: hymn.lyrics,
+    imageUrls: buildImageUrls(request, hymn.imagePaths),
     createdAt: hymn.createdAt.toISOString(),
     updatedAt: hymn.updatedAt.toISOString(),
   };
@@ -85,7 +110,7 @@ export async function hymnRoutes(app: FastifyInstance) {
 
     return {
       success: true,
-      data: toHymn(hymn),
+      data: toHymn(request, hymn),
     };
   });
 }

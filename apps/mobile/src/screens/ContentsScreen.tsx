@@ -74,7 +74,7 @@ export function ContentsScreen() {
             <Pressable
               style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
               onPress={() =>
-                navigation.navigate("HymnDetail", { hymnId: item.id })
+                navigation.navigate("HymnViewPicker", { hymnId: item.id })
               }
             >
               <View style={styles.number}>

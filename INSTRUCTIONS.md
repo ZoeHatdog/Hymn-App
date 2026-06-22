@@ -2,7 +2,7 @@
 
 ## Overview
 
-Hymn App is a minimum viable product for browsing and reading hymn lyrics. Hymns start as plain text files, are imported into PostgreSQL, served by a Fastify API, and displayed in an Expo mobile app.
+Hymn App is a minimum viable product for browsing and reading hymn lyrics and sheet music. Hymns start as plain text files with optional sheet music images, are imported into PostgreSQL, served by a Fastify API, and displayed in an Expo mobile app.
 
 ---
 
@@ -89,6 +89,37 @@ Re-run seeding anytime:
 npm run db:seed
 ```
 
+### Sheet music images (optional)
+
+Hymns can have **one or multiple** sheet music pages.
+
+**Multi-page (recommended):** add an `image_folder:` line to the hymn `.txt` file. All images in that folder (sorted by filename) become pages:
+
+```
+title: Praise, My Soul, The King of Heaven
+author: Henry Francis Lyte (lyrics), John Goss (music)
+image_folder: TBC - Hymns/Medium File
+
+Praise, my soul, the King of heaven;
+...
+```
+
+The folder path is relative to `data/hymns/images/`. To test a different size tier, change the folder name and re-seed.
+
+**Single page:** omit `image_folder` and place a flat file matching the text basename:
+
+| Text file | Image file |
+|-----------|------------|
+| `data/hymns/amazing-grace.txt` | `data/hymns/images/amazing-grace.jpg` |
+
+After adding or updating images:
+
+```bash
+npm run db:seed
+```
+
+Hymns without images will show an empty state on the Notes screen.
+
 ---
 
 ## Running the App
@@ -107,8 +138,9 @@ API runs at `http://localhost:3000`
 |--------|------|-------------|
 | GET | `/health` | Health check |
 | GET | `/api/hymns` | List all hymns |
-| GET | `/api/hymns/:id` | Get hymn with full lyrics |
+| GET | `/api/hymns/:id` | Get hymn with full lyrics and `imageUrls[]` |
 | GET | `/api/hymns/search?q=grace` | Search by title, author, or lyrics |
+| GET | `/api/assets/hymns/:filename` | Serve sheet music image files |
 
 ### Start the Mobile App (Terminal 2)
 
@@ -127,19 +159,21 @@ npm run mobile
 
 ### Mobile App
 - Browse all hymns in a scrollable list
-- Tap a hymn to read full lyrics
+- Tap a hymn to choose **Lyrics** (text) or **Notes** (sheet music)
 - Search hymns by title, author, or lyrics text
 - Back navigation from detail to list
+- Empty state when sheet music is not available
 - Error handling with retry
 
 ### API
-- REST endpoints for listing, detail, and search
+- REST endpoints for listing, detail, search, and static image serving
 - CORS enabled for mobile/web clients
 - PostgreSQL persistence via Prisma ORM
 
 ### Data Pipeline
 - Hymns authored as plain text files in `data/hymns/`
-- Seed script parses text files and upserts into the database
+- Optional sheet music images in `data/hymns/images/` (paired by basename)
+- Seed script parses text files, links images, and upserts into the database
 - Shared types keep API and mobile in sync
 
 ### Included Sample Hymns
@@ -166,7 +200,9 @@ Be Thou my Vision, O Lord of my heart
 npm run db:seed
 ```
 
-3. Restart or refresh the mobile app to see the new hymn.
+3. (Optional) Add sheet music via `image_folder:` in the `.txt` file or a flat image in `data/hymns/images/`, then re-run `npm run db:seed`.
+
+4. Restart or refresh the mobile app to see the new hymn.
 
 ---
 

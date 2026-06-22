@@ -3,6 +3,7 @@ export interface Hymn {
   title: string;
   author: string;
   lyrics: string;
+  imageUrls: string[];
   createdAt: string;
   updatedAt: string;
 }

@@ -12,13 +12,15 @@ export type MainTabParamList = {
 };
 
 /**
- * Root stack. The hymn detail lives here (above the tabs) so any tab can open
- * a hymn without duplicating the screen in every section.
+ * Root stack. Hymn flows live here (above the tabs) so any tab can open
+ * a hymn without duplicating screens in every section.
  */
 export type RootStackParamList = {
   Landing: undefined;
   Main: NavigatorScreenParams<MainTabParamList> | undefined;
-  HymnDetail: { hymnId: string };
+  HymnViewPicker: { hymnId: string };
+  HymnTextDetail: { hymnId: string };
+  HymnImageDetail: { hymnId: string };
 };
 
 declare global {

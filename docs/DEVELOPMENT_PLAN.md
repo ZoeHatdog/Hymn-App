@@ -37,7 +37,9 @@ flowchart LR
 - [`apps/api/src/routes/hymns.ts`](../apps/api/src/routes/hymns.ts)
 - [`prisma/schema.prisma`](../prisma/schema.prisma)
 - [`prisma/seed.ts`](../prisma/seed.ts)
-- [`apps/mobile/src/screens/HymnDetailScreen.tsx`](../apps/mobile/src/screens/HymnDetailScreen.tsx)
+- [`apps/mobile/src/screens/HymnViewPickerScreen.tsx`](../apps/mobile/src/screens/HymnViewPickerScreen.tsx)
+- [`apps/mobile/src/screens/HymnTextDetailScreen.tsx`](../apps/mobile/src/screens/HymnTextDetailScreen.tsx)
+- [`apps/mobile/src/screens/HymnImageDetailScreen.tsx`](../apps/mobile/src/screens/HymnImageDetailScreen.tsx)
 - [`packages/shared-types/src/index.ts`](../packages/shared-types/src/index.ts)
 
 ---
@@ -51,6 +53,7 @@ flowchart LR
   seed --> db[(PostgreSQL Hymn + imagePath)]
   db --> api["Fastify API"]
   api --> staticRoute["Static: /api/assets/hymns/"]
+  api --> mobilePicker["HymnViewPicker screen"]
   api --> mobileText["HymnTextDetail screen"]
   api --> mobileImage["HymnImageDetail screen"]
   staticRoute --> mobileImage
@@ -82,10 +85,10 @@ flowchart LR
 
 ### Navigation UX
 
-- Stack routes: `HymnTextDetail { hymnId }` and `HymnImageDetail { hymnId }`
-- Rename current `HymnDetail` → `HymnTextDetail`
-- From list: default tap opens **Lyrics**; secondary action opens **Sheet music**
-- Both screens share header patterns: back, title, author, favorite star
+- Stack routes: `HymnViewPicker { hymnId }`, `HymnTextDetail { hymnId }`, `HymnImageDetail { hymnId }`
+- From list: tap opens **HymnViewPicker** — user chooses **Lyrics** or **Notes** (sheet music)
+- Detail screens share header patterns: back, title, author, favorite star
+- Cross-link icons on text/image detail screens to jump between views without returning to picker
 
 ---
 
@@ -141,8 +144,8 @@ When no image file exists for a hymn, `imageUrl` is `null`.
 
 ### Phase 0 — Decisions & assets
 
-- [ ] Confirm image storage choice (recommend Option A)
-- [ ] Add sheet images for sample hymns under `data/hymns/images/`:
+- [x] Confirm image storage choice (Option A — local static files)
+- [ ] Add sheet images for sample hymns under `data/hymns/images/` (user-provided):
   - [ ] `amazing-grace.jpg` (or `.png`)
   - [ ] `how-great-thou-art.jpg` (or `.png`)
 - [ ] Document image pairing in [`INSTRUCTIONS.md`](../INSTRUCTIONS.md)
@@ -151,35 +154,36 @@ When no image file exists for a hymn, `imageUrl` is `null`.
 
 **Files:** [`prisma/schema.prisma`](../prisma/schema.prisma), [`packages/shared-types/src/index.ts`](../packages/shared-types/src/index.ts)
 
-- [ ] Add optional `imagePath String?` to `Hymn` model
-- [ ] Run `npm run db:push`
-- [ ] Add `imageUrl: string | null` to shared `Hymn` interface
+- [x] Add optional `imagePath String?` to `Hymn` model
+- [x] Run `npm run db:push`
+- [x] Add `imageUrl: string | null` to shared `Hymn` interface
 
 ### Phase 2 — Seed pipeline
 
 **Files:** [`prisma/seed.ts`](../prisma/seed.ts)
 
-- [ ] After parsing each `.txt`, look for matching image by basename
-- [ ] Upsert `imagePath` when file exists; set `null` when absent
-- [ ] Log warnings for hymns missing images (optional)
+- [x] After parsing each `.txt`, look for matching image by basename
+- [x] Upsert `imagePath` when file exists; set `null` when absent
+- [x] Log warnings for hymns missing images (optional)
 
 ### Phase 3 — API static serving & response mapping
 
 **Files:** [`apps/api/src/index.ts`](../apps/api/src/index.ts), [`apps/api/src/routes/hymns.ts`](../apps/api/src/routes/hymns.ts)
 
-- [ ] Install and register `@fastify/static` for `data/hymns/images/`
-- [ ] Update `toHymn()` mapper to build absolute `imageUrl` from `imagePath`
-- [ ] Verify with curl/browser: JSON detail + direct image URL
+- [x] Install and register `@fastify/static` for `data/hymns/images/`
+- [x] Update `toHymn()` mapper to build absolute `imageUrl` from `imagePath`
+- [ ] Verify with curl/browser: JSON detail + direct image URL (after user uploads images)
 
 ### Phase 4 — Mobile: dual detail screens
 
-**Files:** navigation types, `RootNavigator`, new `HymnImageDetailScreen`, refactor `HymnDetailScreen` → `HymnTextDetailScreen`
+**Files:** navigation types, `RootNavigator`, `HymnViewPickerScreen`, `HymnTextDetailScreen`, `HymnImageDetailScreen`
 
-- [ ] Register `HymnTextDetail` and `HymnImageDetail` on root stack
-- [ ] Default list tap → text screen; add entry to image screen
-- [ ] `HymnImageDetailScreen`: render `Image` with `uri: hymn.imageUrl`, `resizeMode="contain"`
-- [ ] Empty state when `imageUrl` is null
-- [ ] Separate error handling for image load vs. API fetch
+- [x] Register `HymnViewPicker`, `HymnTextDetail`, and `HymnImageDetail` on root stack
+- [x] List tap → picker; user chooses Lyrics or Notes
+- [x] `HymnImageDetailScreen`: render `Image` with `uri: hymn.imageUrl`, `resizeMode="contain"`
+- [x] Empty state when `imageUrl` is null
+- [x] Separate error handling for image load vs. API fetch
+- [x] Cross-link between text and image detail screens
 
 ### Phase 5 — Docs & smoke test
 

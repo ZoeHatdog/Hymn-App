@@ -108,7 +108,7 @@ export function HymnListScreen() {
               hymn={item}
               isFavorite={isFavorite(item.id)}
               onPress={() =>
-                navigation.navigate("HymnDetail", { hymnId: item.id })
+                navigation.navigate("HymnViewPicker", { hymnId: item.id })
               }
               onToggleFavorite={() => toggleFavorite(item.id)}
             />

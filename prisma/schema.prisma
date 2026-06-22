@@ -8,12 +8,13 @@ datasource db {
 }
 
 model Hymn {
-  id        String   @id @default(cuid())
-  title     String   @unique
-  author    String
-  lyrics    String   @db.Text
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id         String   @id @default(cuid())
+  title      String   @unique
+  author     String
+  lyrics     String   @db.Text
+  imagePaths String[] @default([])
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   @@index([title])
 }

@@ -10,18 +10,23 @@ import {
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
-import { useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
+import {
+  useNavigation,
+  useRoute,
+  type NavigationProp,
+  type RouteProp,
+} from "@react-navigation/native";
 import type { Hymn } from "@hymn-app/shared-types";
 import { colors, fontSizes, radii, spacing } from "@hymn-app/shared-themes";
 import { getHymn } from "../api";
 import { useFavorites } from "../state/FavoritesContext";
 import type { RootStackParamList } from "../navigation/types";
 
-type DetailRoute = RouteProp<RootStackParamList, "HymnDetail">;
+type TextDetailRoute = RouteProp<RootStackParamList, "HymnTextDetail">;
 
-export function HymnDetailScreen() {
-  const navigation = useNavigation();
-  const { params } = useRoute<DetailRoute>();
+export function HymnTextDetailScreen() {
+  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
+  const { params } = useRoute<TextDetailRoute>();
   const { hymnId } = params;
   const { isFavorite, toggleFavorite } = useFavorites();
 
@@ -57,20 +62,33 @@ export function HymnDetailScreen() {
             <Ionicons name="chevron-back" size={20} color={colors.accent} />
             <Text style={styles.backText}>Back</Text>
           </Pressable>
-          <Pressable
-            hitSlop={10}
-            onPress={() => toggleFavorite(hymnId)}
-            accessibilityRole="button"
-            accessibilityLabel={
-              favorite ? "Remove from favorites" : "Add to favorites"
-            }
-          >
-            <Ionicons
-              name={favorite ? "star" : "star-outline"}
-              size={24}
-              color={favorite ? colors.accent : colors.textSecondary}
-            />
-          </Pressable>
+          <View style={styles.headerActions}>
+            <Pressable
+              hitSlop={10}
+              onPress={() =>
+                navigation.navigate("HymnImageDetail", { hymnId })
+              }
+              accessibilityRole="button"
+              accessibilityLabel="View sheet music"
+              style={styles.headerActionButton}
+            >
+              <Ionicons name="musical-notes-outline" size={22} color={colors.accent} />
+            </Pressable>
+            <Pressable
+              hitSlop={10}
+              onPress={() => toggleFavorite(hymnId)}
+              accessibilityRole="button"
+              accessibilityLabel={
+                favorite ? "Remove from favorites" : "Add to favorites"
+              }
+            >
+              <Ionicons
+                name={favorite ? "star" : "star-outline"}
+                size={24}
+                color={favorite ? colors.accent : colors.textSecondary}
+              />
+            </Pressable>
+          </View>
         </View>
         {hymn && (
           <>
@@ -118,6 +136,14 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+  },
+  headerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+  },
+  headerActionButton: {
+    padding: spacing.xs,
   },
   backButton: {
     flexDirection: "row",
