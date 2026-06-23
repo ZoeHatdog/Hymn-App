@@ -1,7 +1,10 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import type { HymnSummary } from "@hymn-app/shared-types";
-import { colors, fontSizes, radii, spacing } from "@hymn-app/shared-themes";
+import type { ThemeColors } from "@hymn-app/shared-themes";
+import { fontSizes, radii, spacing } from "@hymn-app/shared-themes";
+import { useThemedStyles } from "../hooks/useThemedStyles";
+import { useTheme } from "../state/ThemeContext";
 
 interface HymnCardProps {
   hymn: HymnSummary;
@@ -16,6 +19,9 @@ export function HymnCard({
   onPress,
   onToggleFavorite,
 }: HymnCardProps) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createStyles);
+
   return (
     <Pressable
       style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
@@ -44,31 +50,32 @@ export function HymnCard({
   );
 }
 
-const styles = StyleSheet.create({
-  card: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: colors.surface,
-    borderRadius: radii.lg,
-    padding: spacing.lg,
-  },
-  cardPressed: {
-    opacity: 0.85,
-  },
-  text: {
-    flex: 1,
-  },
-  title: {
-    fontSize: fontSizes.lg,
-    fontWeight: "600",
-    color: colors.textPrimary,
-  },
-  author: {
-    fontSize: fontSizes.sm,
-    color: colors.accent,
-    marginTop: spacing.xs,
-  },
-  starButton: {
-    paddingLeft: spacing.md,
-  },
-});
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    card: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: colors.surface,
+      borderRadius: radii.lg,
+      padding: spacing.lg,
+    },
+    cardPressed: {
+      opacity: 0.85,
+    },
+    text: {
+      flex: 1,
+    },
+    title: {
+      fontSize: fontSizes.lg,
+      fontWeight: "600",
+      color: colors.textPrimary,
+    },
+    author: {
+      fontSize: fontSizes.sm,
+      color: colors.accent,
+      marginTop: spacing.xs,
+    },
+    starButton: {
+      paddingLeft: spacing.md,
+    },
+  });

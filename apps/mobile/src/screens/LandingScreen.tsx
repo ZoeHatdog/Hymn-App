@@ -9,7 +9,10 @@ import {
 import { StatusBar } from "expo-status-bar";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { colors, fontSizes, radii, spacing } from "@hymn-app/shared-themes";
+import type { ThemeColors } from "@hymn-app/shared-themes";
+import { fontSizes, radii, spacing } from "@hymn-app/shared-themes";
+import { useThemedStyles } from "../hooks/useThemedStyles";
+import { useTheme } from "../state/ThemeContext";
 import type { RootStackParamList } from "../navigation/types";
 
 import logo from "../../../../packages/shared-themes/TBC logo.jpeg";
@@ -18,10 +21,12 @@ type Navigation = NativeStackNavigationProp<RootStackParamList, "Landing">;
 
 export function LandingScreen() {
   const navigation = useNavigation<Navigation>();
+  const { isDark } = useTheme();
+  const styles = useThemedStyles(createStyles);
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar style="dark" />
+      <StatusBar style={isDark ? "light" : "dark"} />
       <View style={styles.content}>
         <Image source={logo} style={styles.logo} resizeMode="contain" />
         <Text style={styles.title}>Hymn App</Text>
@@ -43,56 +48,57 @@ export function LandingScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.backgroundLight,
-  },
-  content: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: spacing.xxl,
-  },
-  logo: {
-    width: 180,
-    height: 180,
-    marginBottom: spacing.xl,
-  },
-  title: {
-    fontSize: fontSizes.display,
-    fontWeight: "700",
-    color: colors.primary,
-  },
-  divider: {
-    width: 56,
-    height: 3,
-    borderRadius: radii.sm,
-    backgroundColor: colors.accent,
-    marginVertical: spacing.lg,
-  },
-  tagline: {
-    fontSize: fontSizes.md,
-    lineHeight: 24,
-    color: colors.primaryLight,
-    textAlign: "center",
-  },
-  footer: {
-    paddingHorizontal: spacing.xl,
-    paddingBottom: spacing.xxl,
-  },
-  button: {
-    backgroundColor: colors.primary,
-    borderRadius: radii.lg,
-    paddingVertical: spacing.lg,
-    alignItems: "center",
-  },
-  buttonPressed: {
-    opacity: 0.85,
-  },
-  buttonText: {
-    fontSize: fontSizes.lg,
-    fontWeight: "700",
-    color: colors.textPrimary,
-  },
-});
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    content: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      paddingHorizontal: spacing.xxl,
+    },
+    logo: {
+      width: 180,
+      height: 180,
+      marginBottom: spacing.xl,
+    },
+    title: {
+      fontSize: fontSizes.display,
+      fontWeight: "700",
+      color: colors.primary,
+    },
+    divider: {
+      width: 56,
+      height: 3,
+      borderRadius: radii.sm,
+      backgroundColor: colors.accent,
+      marginVertical: spacing.lg,
+    },
+    tagline: {
+      fontSize: fontSizes.md,
+      lineHeight: 24,
+      color: colors.textSecondary,
+      textAlign: "center",
+    },
+    footer: {
+      paddingHorizontal: spacing.xl,
+      paddingBottom: spacing.xxl,
+    },
+    button: {
+      backgroundColor: colors.primary,
+      borderRadius: radii.lg,
+      paddingVertical: spacing.lg,
+      alignItems: "center",
+    },
+    buttonPressed: {
+      opacity: 0.85,
+    },
+    buttonText: {
+      fontSize: fontSizes.lg,
+      fontWeight: "700",
+      color: colors.onPrimary,
+    },
+  });

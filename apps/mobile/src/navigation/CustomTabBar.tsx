@@ -2,7 +2,10 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
-import { colors, fontSizes, radii, spacing } from "@hymn-app/shared-themes";
+import type { ThemeColors } from "@hymn-app/shared-themes";
+import { fontSizes, radii, spacing } from "@hymn-app/shared-themes";
+import { useThemedStyles } from "../hooks/useThemedStyles";
+import { useTheme } from "../state/ThemeContext";
 import type { MainTabParamList } from "./types";
 
 type IconName = keyof typeof Ionicons.glyphMap;
@@ -30,6 +33,8 @@ export function CustomTabBar({
   navigation,
 }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createStyles);
 
   return (
     <View
@@ -67,7 +72,7 @@ export function CustomTabBar({
               <Ionicons
                 name={isFocused ? meta.iconActive : meta.icon}
                 size={22}
-                color={isFocused ? colors.background : colors.textSecondary}
+                color={isFocused ? colors.onAccent : colors.textSecondary}
               />
             </View>
             <Text
@@ -83,43 +88,44 @@ export function CustomTabBar({
   );
 }
 
-const styles = StyleSheet.create({
-  bar: {
-    flexDirection: "row",
-    backgroundColor: colors.surface,
-    paddingTop: spacing.sm,
-    borderTopLeftRadius: radii.lg,
-    borderTopRightRadius: radii.lg,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.primaryLight,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 12,
-  },
-  tab: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 2,
-  },
-  iconWrap: {
-    width: 44,
-    height: 32,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: radii.pill,
-  },
-  iconWrapActive: {
-    backgroundColor: colors.accent,
-  },
-  label: {
-    fontSize: fontSizes.xs,
-    color: colors.textSecondary,
-  },
-  labelActive: {
-    color: colors.accent,
-    fontWeight: "700",
-  },
-});
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    bar: {
+      flexDirection: "row",
+      backgroundColor: colors.surface,
+      paddingTop: spacing.sm,
+      borderTopLeftRadius: radii.lg,
+      borderTopRightRadius: radii.lg,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: colors.border,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: -2 },
+      shadowOpacity: 0.2,
+      shadowRadius: 8,
+      elevation: 12,
+    },
+    tab: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 2,
+    },
+    iconWrap: {
+      width: 44,
+      height: 32,
+      alignItems: "center",
+      justifyContent: "center",
+      borderRadius: radii.pill,
+    },
+    iconWrapActive: {
+      backgroundColor: colors.accent,
+    },
+    label: {
+      fontSize: fontSizes.xs,
+      color: colors.textSecondary,
+    },
+    labelActive: {
+      color: colors.accent,
+      fontWeight: "700",
+    },
+  });

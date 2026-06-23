@@ -11,11 +11,14 @@ import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { HymnSummary } from "@hymn-app/shared-types";
-import { colors, fontSizes, spacing } from "@hymn-app/shared-themes";
+import type { ThemeColors } from "@hymn-app/shared-themes";
+import { fontSizes, spacing } from "@hymn-app/shared-themes";
 import { getHymns } from "../api";
 import { ScreenContainer } from "../components/ScreenContainer";
 import { HymnCard } from "../components/HymnCard";
+import { useThemedStyles } from "../hooks/useThemedStyles";
 import { useFavorites } from "../state/FavoritesContext";
+import { useTheme } from "../state/ThemeContext";
 import type { RootStackParamList } from "../navigation/types";
 
 type Navigation = NativeStackNavigationProp<RootStackParamList>;
@@ -23,6 +26,8 @@ type Navigation = NativeStackNavigationProp<RootStackParamList>;
 export function FavoritesScreen() {
   const navigation = useNavigation<Navigation>();
   const { favoriteIds, isFavorite, toggleFavorite } = useFavorites();
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createStyles);
 
   const [allHymns, setAllHymns] = useState<HymnSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -101,52 +106,53 @@ export function FavoritesScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  list: {
-    paddingHorizontal: spacing.xl,
-    paddingBottom: spacing.xl,
-    gap: spacing.md,
-    flexGrow: 1,
-  },
-  centered: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  empty: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingTop: 80,
-  },
-  emptyTitle: {
-    fontSize: fontSizes.lg,
-    fontWeight: "600",
-    color: colors.textPrimary,
-    marginTop: spacing.md,
-  },
-  emptyText: {
-    fontSize: fontSizes.md,
-    color: colors.textSecondary,
-    textAlign: "center",
-    marginTop: spacing.xs,
-  },
-  errorBox: {
-    margin: spacing.xl,
-    padding: spacing.lg,
-    backgroundColor: colors.errorBackground,
-    borderRadius: 10,
-  },
-  errorText: {
-    color: colors.errorText,
-    fontSize: fontSizes.sm,
-  },
-  retryButton: {
-    marginTop: spacing.md - 2,
-    alignSelf: "flex-start",
-  },
-  retryText: {
-    color: colors.accent,
-    fontWeight: "600",
-  },
-});
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    list: {
+      paddingHorizontal: spacing.xl,
+      paddingBottom: spacing.xl,
+      gap: spacing.md,
+      flexGrow: 1,
+    },
+    centered: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    empty: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      paddingTop: 80,
+    },
+    emptyTitle: {
+      fontSize: fontSizes.lg,
+      fontWeight: "600",
+      color: colors.textPrimary,
+      marginTop: spacing.md,
+    },
+    emptyText: {
+      fontSize: fontSizes.md,
+      color: colors.textSecondary,
+      textAlign: "center",
+      marginTop: spacing.xs,
+    },
+    errorBox: {
+      margin: spacing.xl,
+      padding: spacing.lg,
+      backgroundColor: colors.errorBackground,
+      borderRadius: 10,
+    },
+    errorText: {
+      color: colors.errorText,
+      fontSize: fontSizes.sm,
+    },
+    retryButton: {
+      marginTop: spacing.md - 2,
+      alignSelf: "flex-start",
+    },
+    retryText: {
+      color: colors.accent,
+      fontWeight: "600",
+    },
+  });

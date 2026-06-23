@@ -1,7 +1,10 @@
 import type { ReactNode } from "react";
 import { SafeAreaView, StyleSheet, Text, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
-import { colors, fontSizes, spacing } from "@hymn-app/shared-themes";
+import type { ThemeColors } from "@hymn-app/shared-themes";
+import { fontSizes, spacing } from "@hymn-app/shared-themes";
+import { useThemedStyles } from "../hooks/useThemedStyles";
+import { useTheme } from "../state/ThemeContext";
 
 interface ScreenContainerProps {
   title?: string;
@@ -24,9 +27,12 @@ export function ScreenContainer({
   padded = true,
   children,
 }: ScreenContainerProps) {
+  const { isDark } = useTheme();
+  const styles = useThemedStyles(createStyles);
+
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar style="light" />
+      <StatusBar style={isDark ? "light" : "dark"} />
       {(title || subtitle) && (
         <View style={styles.header}>
           <View style={styles.headerText}>
@@ -41,36 +47,37 @@ export function ScreenContainer({
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "flex-end",
-    justifyContent: "space-between",
-    paddingHorizontal: spacing.xl,
-    paddingTop: spacing.lg,
-    paddingBottom: spacing.md,
-  },
-  headerText: {
-    flex: 1,
-  },
-  title: {
-    fontSize: fontSizes.xxl,
-    fontWeight: "700",
-    color: colors.textPrimary,
-  },
-  subtitle: {
-    fontSize: fontSizes.sm,
-    color: colors.textSecondary,
-    marginTop: spacing.xs,
-  },
-  body: {
-    flex: 1,
-  },
-  bodyPadded: {
-    paddingHorizontal: spacing.xl,
-  },
-});
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    safeArea: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    header: {
+      flexDirection: "row",
+      alignItems: "flex-end",
+      justifyContent: "space-between",
+      paddingHorizontal: spacing.xl,
+      paddingTop: spacing.lg,
+      paddingBottom: spacing.md,
+    },
+    headerText: {
+      flex: 1,
+    },
+    title: {
+      fontSize: fontSizes.xxl,
+      fontWeight: "700",
+      color: colors.textPrimary,
+    },
+    subtitle: {
+      fontSize: fontSizes.sm,
+      color: colors.textSecondary,
+      marginTop: spacing.xs,
+    },
+    body: {
+      flex: 1,
+    },
+    bodyPadded: {
+      paddingHorizontal: spacing.xl,
+    },
+  });

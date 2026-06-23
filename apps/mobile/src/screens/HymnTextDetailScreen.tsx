@@ -17,9 +17,12 @@ import {
   type RouteProp,
 } from "@react-navigation/native";
 import type { Hymn } from "@hymn-app/shared-types";
-import { colors, fontSizes, radii, spacing } from "@hymn-app/shared-themes";
+import type { ThemeColors } from "@hymn-app/shared-themes";
+import { fontSizes, radii, spacing } from "@hymn-app/shared-themes";
 import { getHymn } from "../api";
+import { useThemedStyles } from "../hooks/useThemedStyles";
 import { useFavorites } from "../state/FavoritesContext";
+import { useTheme } from "../state/ThemeContext";
 import type { RootStackParamList } from "../navigation/types";
 
 type TextDetailRoute = RouteProp<RootStackParamList, "HymnTextDetail">;
@@ -29,6 +32,8 @@ export function HymnTextDetailScreen() {
   const { params } = useRoute<TextDetailRoute>();
   const { hymnId } = params;
   const { isFavorite, toggleFavorite } = useFavorites();
+  const { colors, isDark } = useTheme();
+  const styles = useThemedStyles(createStyles);
 
   const [hymn, setHymn] = useState<Hymn | null>(null);
   const [loading, setLoading] = useState(true);
@@ -55,7 +60,7 @@ export function HymnTextDetailScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar style="light" />
+      <StatusBar style={isDark ? "light" : "dark"} />
       <View style={styles.header}>
         <View style={styles.headerRow}>
           <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
@@ -122,80 +127,81 @@ export function HymnTextDetailScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  header: {
-    paddingHorizontal: spacing.xl,
-    paddingTop: spacing.lg,
-    paddingBottom: spacing.md,
-  },
-  headerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  headerActions: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.md,
-  },
-  headerActionButton: {
-    padding: spacing.xs,
-  },
-  backButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    alignSelf: "flex-start",
-  },
-  backText: {
-    color: colors.accent,
-    fontSize: fontSizes.md,
-    fontWeight: "600",
-  },
-  title: {
-    fontSize: fontSizes.xl,
-    fontWeight: "700",
-    color: colors.textPrimary,
-    marginTop: spacing.md,
-  },
-  author: {
-    fontSize: fontSizes.sm,
-    color: colors.accent,
-    marginTop: spacing.xs,
-  },
-  lyricsContainer: {
-    padding: spacing.xl,
-    paddingBottom: 40,
-  },
-  lyrics: {
-    fontSize: 17,
-    lineHeight: 28,
-    color: colors.textBody,
-  },
-  centered: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  errorBox: {
-    margin: spacing.xl,
-    padding: spacing.lg,
-    backgroundColor: colors.errorBackground,
-    borderRadius: radii.md,
-  },
-  errorText: {
-    color: colors.errorText,
-    fontSize: fontSizes.sm,
-  },
-  retryButton: {
-    marginTop: spacing.md - 2,
-    alignSelf: "flex-start",
-  },
-  retryText: {
-    color: colors.accent,
-    fontWeight: "600",
-  },
-});
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    header: {
+      paddingHorizontal: spacing.xl,
+      paddingTop: spacing.lg,
+      paddingBottom: spacing.md,
+    },
+    headerRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+    },
+    headerActions: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: spacing.md,
+    },
+    headerActionButton: {
+      padding: spacing.xs,
+    },
+    backButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      alignSelf: "flex-start",
+    },
+    backText: {
+      color: colors.accent,
+      fontSize: fontSizes.md,
+      fontWeight: "600",
+    },
+    title: {
+      fontSize: fontSizes.xl,
+      fontWeight: "700",
+      color: colors.textPrimary,
+      marginTop: spacing.md,
+    },
+    author: {
+      fontSize: fontSizes.sm,
+      color: colors.accent,
+      marginTop: spacing.xs,
+    },
+    lyricsContainer: {
+      padding: spacing.xl,
+      paddingBottom: 40,
+    },
+    lyrics: {
+      fontSize: 17,
+      lineHeight: 28,
+      color: colors.textBody,
+    },
+    centered: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    errorBox: {
+      margin: spacing.xl,
+      padding: spacing.lg,
+      backgroundColor: colors.errorBackground,
+      borderRadius: radii.md,
+    },
+    errorText: {
+      color: colors.errorText,
+      fontSize: fontSizes.sm,
+    },
+    retryButton: {
+      marginTop: spacing.md - 2,
+      alignSelf: "flex-start",
+    },
+    retryText: {
+      color: colors.accent,
+      fontWeight: "600",
+    },
+  });

@@ -21,7 +21,9 @@ export const palette = {
   blush: "#fed7d7",
 } as const;
 
-export const colors = {
+export type ColorScheme = "light" | "dark";
+
+export const darkColors = {
   background: palette.navyDeep,
   // Matches the white canvas of "TBC logo.jpeg" so the logo blends in seamlessly.
   backgroundLight: palette.white,
@@ -32,9 +34,38 @@ export const colors = {
   textPrimary: palette.white,
   textSecondary: palette.mist,
   textBody: palette.offWhite,
+  onPrimary: palette.white,
+  onAccent: palette.navyDeep,
+  border: palette.brandSlate,
   errorBackground: palette.maroon,
   errorText: palette.blush,
 } as const;
+
+export const lightColors = {
+  background: palette.offWhite,
+  backgroundLight: palette.white,
+  surface: palette.white,
+  primary: palette.brandBlue,
+  primaryLight: palette.brandSlate,
+  accent: palette.gold,
+  textPrimary: palette.navyDeep,
+  textSecondary: palette.brandSlate,
+  textBody: palette.navyDeep,
+  onPrimary: palette.white,
+  onAccent: palette.navyDeep,
+  border: palette.mist,
+  errorBackground: palette.maroon,
+  errorText: palette.blush,
+} as const;
+
+export type ThemeColors = { [K in keyof typeof darkColors]: string };
+
+/** @deprecated Use `darkColors`, `lightColors`, or `useTheme()` instead. */
+export const colors = darkColors;
+
+export function getColorsForScheme(scheme: ColorScheme): ThemeColors {
+  return scheme === "dark" ? darkColors : lightColors;
+}
 
 export const fonts = {
   serif: "Besley",

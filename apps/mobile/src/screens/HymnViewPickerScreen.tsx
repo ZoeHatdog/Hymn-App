@@ -16,9 +16,12 @@ import {
   type RouteProp,
 } from "@react-navigation/native";
 import type { Hymn } from "@hymn-app/shared-types";
-import { colors, fontSizes, radii, spacing } from "@hymn-app/shared-themes";
+import type { ThemeColors } from "@hymn-app/shared-themes";
+import { fontSizes, radii, spacing } from "@hymn-app/shared-themes";
 import { getHymn } from "../api";
+import { useThemedStyles } from "../hooks/useThemedStyles";
 import { useFavorites } from "../state/FavoritesContext";
+import { useTheme } from "../state/ThemeContext";
 import type { RootStackParamList } from "../navigation/types";
 
 type PickerRoute = RouteProp<RootStackParamList, "HymnViewPicker">;
@@ -28,6 +31,8 @@ export function HymnViewPickerScreen() {
   const { params } = useRoute<PickerRoute>();
   const { hymnId } = params;
   const { isFavorite, toggleFavorite } = useFavorites();
+  const { colors, isDark } = useTheme();
+  const styles = useThemedStyles(createStyles);
 
   const [hymn, setHymn] = useState<Hymn | null>(null);
   const [loading, setLoading] = useState(true);
@@ -55,7 +60,7 @@ export function HymnViewPickerScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar style="light" />
+      <StatusBar style={isDark ? "light" : "dark"} />
       <View style={styles.header}>
         <View style={styles.headerRow}>
           <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
@@ -102,8 +107,6 @@ export function HymnViewPickerScreen() {
 
       {!loading && !error && hymn && (
         <View style={styles.options}>
-          <Text style={styles.prompt}>How would you like to view this hymn?</Text>
-
           <Pressable
             style={({ pressed }) => [styles.optionCard, pressed && styles.optionPressed]}
             onPress={() => navigation.navigate("HymnTextDetail", { hymnId })}
@@ -143,104 +146,100 @@ export function HymnViewPickerScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  header: {
-    paddingHorizontal: spacing.xl,
-    paddingTop: spacing.lg,
-    paddingBottom: spacing.md,
-  },
-  headerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  backButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    alignSelf: "flex-start",
-  },
-  backText: {
-    color: colors.accent,
-    fontSize: fontSizes.md,
-    fontWeight: "600",
-  },
-  title: {
-    fontSize: fontSizes.xl,
-    fontWeight: "700",
-    color: colors.textPrimary,
-    marginTop: spacing.md,
-  },
-  author: {
-    fontSize: fontSizes.sm,
-    color: colors.accent,
-    marginTop: spacing.xs,
-  },
-  options: {
-    padding: spacing.xl,
-    gap: spacing.md,
-  },
-  prompt: {
-    fontSize: fontSizes.md,
-    color: colors.textSecondary,
-    marginBottom: spacing.sm,
-  },
-  optionCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: colors.surface,
-    borderRadius: radii.lg,
-    padding: spacing.lg,
-  },
-  optionPressed: {
-    opacity: 0.85,
-  },
-  optionIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: radii.md,
-    backgroundColor: colors.background,
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: spacing.md,
-  },
-  optionText: {
-    flex: 1,
-  },
-  optionTitle: {
-    fontSize: fontSizes.lg,
-    fontWeight: "600",
-    color: colors.textPrimary,
-  },
-  optionSubtitle: {
-    fontSize: fontSizes.sm,
-    color: colors.textSecondary,
-    marginTop: spacing.xs,
-  },
-  centered: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  errorBox: {
-    margin: spacing.xl,
-    padding: spacing.lg,
-    backgroundColor: colors.errorBackground,
-    borderRadius: radii.md,
-  },
-  errorText: {
-    color: colors.errorText,
-    fontSize: fontSizes.sm,
-  },
-  retryButton: {
-    marginTop: spacing.md - 2,
-    alignSelf: "flex-start",
-  },
-  retryText: {
-    color: colors.accent,
-    fontWeight: "600",
-  },
-});
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    header: {
+      paddingHorizontal: spacing.xl,
+      paddingTop: spacing.lg,
+      paddingBottom: spacing.md,
+    },
+    headerRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+    },
+    backButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      alignSelf: "flex-start",
+    },
+    backText: {
+      color: colors.accent,
+      fontSize: fontSizes.md,
+      fontWeight: "600",
+    },
+    title: {
+      fontSize: fontSizes.xl,
+      fontWeight: "700",
+      color: colors.textPrimary,
+      marginTop: spacing.md,
+    },
+    author: {
+      fontSize: fontSizes.sm,
+      color: colors.accent,
+      marginTop: spacing.xs,
+    },
+    options: {
+      padding: spacing.xl,
+      gap: spacing.md,
+    },
+    optionCard: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: colors.surface,
+      borderRadius: radii.lg,
+      padding: spacing.lg,
+    },
+    optionPressed: {
+      opacity: 0.85,
+    },
+    optionIcon: {
+      width: 48,
+      height: 48,
+      borderRadius: radii.md,
+      backgroundColor: colors.background,
+      alignItems: "center",
+      justifyContent: "center",
+      marginRight: spacing.md,
+    },
+    optionText: {
+      flex: 1,
+    },
+    optionTitle: {
+      fontSize: fontSizes.lg,
+      fontWeight: "600",
+      color: colors.textPrimary,
+    },
+    optionSubtitle: {
+      fontSize: fontSizes.sm,
+      color: colors.textSecondary,
+      marginTop: spacing.xs,
+    },
+    centered: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    errorBox: {
+      margin: spacing.xl,
+      padding: spacing.lg,
+      backgroundColor: colors.errorBackground,
+      borderRadius: radii.md,
+    },
+    errorText: {
+      color: colors.errorText,
+      fontSize: fontSizes.sm,
+    },
+    retryButton: {
+      marginTop: spacing.md - 2,
+      alignSelf: "flex-start",
+    },
+    retryText: {
+      color: colors.accent,
+      fontWeight: "600",
+    },
+  });

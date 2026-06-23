@@ -10,15 +10,20 @@ import {
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { HymnSummary } from "@hymn-app/shared-types";
-import { colors, fontSizes, radii, spacing } from "@hymn-app/shared-themes";
+import type { ThemeColors } from "@hymn-app/shared-themes";
+import { fontSizes, radii, spacing } from "@hymn-app/shared-themes";
 import { getHymns } from "../api";
 import { ScreenContainer } from "../components/ScreenContainer";
+import { useThemedStyles } from "../hooks/useThemedStyles";
+import { useTheme } from "../state/ThemeContext";
 import type { RootStackParamList } from "../navigation/types";
 
 type Navigation = NativeStackNavigationProp<RootStackParamList>;
 
 export function ContentsScreen() {
   const navigation = useNavigation<Navigation>();
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createStyles);
 
   const [hymns, setHymns] = useState<HymnSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -96,78 +101,79 @@ export function ContentsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  list: {
-    paddingHorizontal: spacing.xl,
-    paddingBottom: spacing.xl,
-  },
-  separator: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: colors.primaryLight,
-    opacity: 0.3,
-  },
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: spacing.md,
-    gap: spacing.md,
-  },
-  rowPressed: {
-    opacity: 0.6,
-  },
-  number: {
-    width: 36,
-    height: 36,
-    borderRadius: radii.pill,
-    backgroundColor: colors.surface,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  numberText: {
-    color: colors.accent,
-    fontWeight: "700",
-    fontSize: fontSizes.sm,
-  },
-  rowText: {
-    flex: 1,
-  },
-  rowTitle: {
-    fontSize: fontSizes.md,
-    fontWeight: "600",
-    color: colors.textPrimary,
-  },
-  rowAuthor: {
-    fontSize: fontSizes.sm,
-    color: colors.textSecondary,
-    marginTop: 2,
-  },
-  centered: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  errorBox: {
-    margin: spacing.xl,
-    padding: spacing.lg,
-    backgroundColor: colors.errorBackground,
-    borderRadius: radii.md,
-  },
-  errorText: {
-    color: colors.errorText,
-    fontSize: fontSizes.sm,
-  },
-  retryButton: {
-    marginTop: spacing.md - 2,
-    alignSelf: "flex-start",
-  },
-  retryText: {
-    color: colors.accent,
-    fontWeight: "600",
-  },
-  emptyText: {
-    color: colors.textSecondary,
-    textAlign: "center",
-    marginTop: 40,
-    fontSize: fontSizes.md,
-  },
-});
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    list: {
+      paddingHorizontal: spacing.xl,
+      paddingBottom: spacing.xl,
+    },
+    separator: {
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: colors.border,
+      opacity: 0.3,
+    },
+    row: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingVertical: spacing.md,
+      gap: spacing.md,
+    },
+    rowPressed: {
+      opacity: 0.6,
+    },
+    number: {
+      width: 36,
+      height: 36,
+      borderRadius: radii.pill,
+      backgroundColor: colors.surface,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    numberText: {
+      color: colors.accent,
+      fontWeight: "700",
+      fontSize: fontSizes.sm,
+    },
+    rowText: {
+      flex: 1,
+    },
+    rowTitle: {
+      fontSize: fontSizes.md,
+      fontWeight: "600",
+      color: colors.textPrimary,
+    },
+    rowAuthor: {
+      fontSize: fontSizes.sm,
+      color: colors.textSecondary,
+      marginTop: 2,
+    },
+    centered: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    errorBox: {
+      margin: spacing.xl,
+      padding: spacing.lg,
+      backgroundColor: colors.errorBackground,
+      borderRadius: radii.md,
+    },
+    errorText: {
+      color: colors.errorText,
+      fontSize: fontSizes.sm,
+    },
+    retryButton: {
+      marginTop: spacing.md - 2,
+      alignSelf: "flex-start",
+    },
+    retryText: {
+      color: colors.accent,
+      fontWeight: "600",
+    },
+    emptyText: {
+      color: colors.textSecondary,
+      textAlign: "center",
+      marginTop: 40,
+      fontSize: fontSizes.md,
+    },
+  });

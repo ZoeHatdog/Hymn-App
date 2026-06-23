@@ -2,9 +2,12 @@ import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-nati
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
-import { colors, fontSizes, radii, spacing } from "@hymn-app/shared-themes";
+import type { ThemeColors } from "@hymn-app/shared-themes";
+import { fontSizes, radii, spacing } from "@hymn-app/shared-themes";
 import { ScreenContainer } from "../components/ScreenContainer";
+import { useThemedStyles } from "../hooks/useThemedStyles";
 import { useFavorites } from "../state/FavoritesContext";
+import { useTheme } from "../state/ThemeContext";
 import type { MainTabParamList } from "../navigation/types";
 
 import logo from "../../../../packages/shared-themes/TBC logo.jpeg";
@@ -44,6 +47,8 @@ const QUICK_ACTIONS: QuickAction[] = [
 export function HomeScreen() {
   const navigation = useNavigation<Navigation>();
   const { favoriteIds } = useFavorites();
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createStyles);
 
   return (
     <ScreenContainer padded={false}>
@@ -70,7 +75,7 @@ export function HomeScreen() {
               onPress={() => navigation.navigate(action.target)}
             >
               <View style={styles.iconBadge}>
-                <Ionicons name={action.icon} size={22} color={colors.background} />
+                <Ionicons name={action.icon} size={22} color={colors.onAccent} />
               </View>
               <View style={styles.cardText}>
                 <Text style={styles.cardTitle}>{action.label}</Text>
@@ -89,80 +94,81 @@ export function HomeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  content: {
-    padding: spacing.xl,
-    paddingBottom: spacing.xxl,
-  },
-  hero: {
-    alignItems: "center",
-    marginBottom: spacing.xxl,
-  },
-  logo: {
-    width: 96,
-    height: 96,
-    marginBottom: spacing.md,
-  },
-  welcome: {
-    fontSize: fontSizes.sm,
-    color: colors.textSecondary,
-    textTransform: "uppercase",
-    letterSpacing: 1,
-  },
-  heroTitle: {
-    fontSize: fontSizes.display,
-    fontWeight: "700",
-    color: colors.textPrimary,
-    marginTop: spacing.xs,
-  },
-  heroSubtitle: {
-    fontSize: fontSizes.md,
-    color: colors.textBody,
-    textAlign: "center",
-    marginTop: spacing.sm,
-    lineHeight: 22,
-  },
-  sectionLabel: {
-    fontSize: fontSizes.sm,
-    fontWeight: "700",
-    color: colors.textSecondary,
-    textTransform: "uppercase",
-    letterSpacing: 1,
-    marginBottom: spacing.md,
-  },
-  actions: {
-    gap: spacing.md,
-  },
-  card: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: colors.surface,
-    borderRadius: radii.lg,
-    padding: spacing.lg,
-    gap: spacing.md,
-  },
-  cardPressed: {
-    opacity: 0.85,
-  },
-  iconBadge: {
-    width: 44,
-    height: 44,
-    borderRadius: radii.pill,
-    backgroundColor: colors.accent,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  cardText: {
-    flex: 1,
-  },
-  cardTitle: {
-    fontSize: fontSizes.lg,
-    fontWeight: "600",
-    color: colors.textPrimary,
-  },
-  cardDescription: {
-    fontSize: fontSizes.sm,
-    color: colors.textSecondary,
-    marginTop: 2,
-  },
-});
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    content: {
+      padding: spacing.xl,
+      paddingBottom: spacing.xxl,
+    },
+    hero: {
+      alignItems: "center",
+      marginBottom: spacing.xxl,
+    },
+    logo: {
+      width: 96,
+      height: 96,
+      marginBottom: spacing.md,
+    },
+    welcome: {
+      fontSize: fontSizes.sm,
+      color: colors.textSecondary,
+      textTransform: "uppercase",
+      letterSpacing: 1,
+    },
+    heroTitle: {
+      fontSize: fontSizes.display,
+      fontWeight: "700",
+      color: colors.textPrimary,
+      marginTop: spacing.xs,
+    },
+    heroSubtitle: {
+      fontSize: fontSizes.md,
+      color: colors.textBody,
+      textAlign: "center",
+      marginTop: spacing.sm,
+      lineHeight: 22,
+    },
+    sectionLabel: {
+      fontSize: fontSizes.sm,
+      fontWeight: "700",
+      color: colors.textSecondary,
+      textTransform: "uppercase",
+      letterSpacing: 1,
+      marginBottom: spacing.md,
+    },
+    actions: {
+      gap: spacing.md,
+    },
+    card: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: colors.surface,
+      borderRadius: radii.lg,
+      padding: spacing.lg,
+      gap: spacing.md,
+    },
+    cardPressed: {
+      opacity: 0.85,
+    },
+    iconBadge: {
+      width: 44,
+      height: 44,
+      borderRadius: radii.pill,
+      backgroundColor: colors.accent,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    cardText: {
+      flex: 1,
+    },
+    cardTitle: {
+      fontSize: fontSizes.lg,
+      fontWeight: "600",
+      color: colors.textPrimary,
+    },
+    cardDescription: {
+      fontSize: fontSizes.sm,
+      color: colors.textSecondary,
+      marginTop: 2,
+    },
+  });

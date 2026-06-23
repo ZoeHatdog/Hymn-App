@@ -19,27 +19,43 @@ import {
   type RouteProp,
 } from "@react-navigation/native";
 import type { Hymn } from "@hymn-app/shared-types";
-import { colors, fontSizes, radii, spacing } from "@hymn-app/shared-themes";
+import type { ThemeColors } from "@hymn-app/shared-themes";
+import { fontSizes, palette, radii, spacing } from "@hymn-app/shared-themes";
+import { SheetMusicViewerModal } from "../components/SheetMusicViewerModal";
 import { getHymn } from "../api";
+import { useThemedStyles } from "../hooks/useThemedStyles";
 import { useFavorites } from "../state/FavoritesContext";
+import { useTheme } from "../state/ThemeContext";
 import type { RootStackParamList } from "../navigation/types";
+import { computeContainedSize } from "../utils/sheetMusicLayout";
 
 type ImageDetailRoute = RouteProp<RootStackParamList, "HymnImageDetail">;
+
+const PREVIEW_MAX_HEIGHT_RATIO = 0.45;
 
 function SheetMusicPage({
   uri,
   pageNumber,
   totalPages,
   width,
+  maxHeight,
+  onPress,
   onError,
 }: {
   uri: string;
   pageNumber: number;
   totalPages: number;
   width: number;
+  maxHeight: number;
+  onPress: () => void;
   onError: () => void;
 }) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createPageStyles);
   const [loading, setLoading] = useState(true);
+  const [displaySize, setDisplaySize] = useState<{ width: number; height: number } | null>(
+    null,
+  );
 
   return (
     <View style={styles.pageBlock}>
@@ -48,21 +64,42 @@ function SheetMusicPage({
           Page {pageNumber} of {totalPages}
         </Text>
       )}
-      {loading && (
-        <View style={styles.pageLoading}>
-          <ActivityIndicator size="small" color={colors.accent} />
+      <Pressable
+        onPress={onPress}
+        style={({ pressed }) => [styles.imagePressable, pressed && styles.imagePressed]}
+        accessibilityRole="button"
+        accessibilityLabel={`View page ${pageNumber} full screen`}
+        accessibilityHint="Opens sheet music viewer"
+      >
+        {loading && (
+          <View style={styles.pageLoading}>
+            <ActivityIndicator size="small" color={colors.accent} />
+          </View>
+        )}
+        <Image
+          source={{ uri }}
+          style={
+            displaySize
+              ? { width: displaySize.width, height: displaySize.height }
+              : { width, height: maxHeight * 0.5 }
+          }
+          resizeMode="contain"
+          onLoad={(event) => {
+            const { width: naturalWidth, height: naturalHeight } = event.nativeEvent.source;
+            setDisplaySize(
+              computeContainedSize(naturalWidth, naturalHeight, width, maxHeight),
+            );
+            setLoading(false);
+          }}
+          onError={() => {
+            setLoading(false);
+            onError();
+          }}
+        />
+        <View style={styles.expandHint}>
+          <Ionicons name="expand-outline" size={18} color={palette.white} />
         </View>
-      )}
-      <Image
-        source={{ uri }}
-        style={[styles.image, { width }]}
-        resizeMode="contain"
-        onLoadEnd={() => setLoading(false)}
-        onError={() => {
-          setLoading(false);
-          onError();
-        }}
-      />
+      </Pressable>
     </View>
   );
 }
@@ -71,15 +108,20 @@ export function HymnImageDetailScreen() {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const { params } = useRoute<ImageDetailRoute>();
   const { hymnId } = params;
-  const { width: windowWidth } = useWindowDimensions();
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const { isFavorite, toggleFavorite } = useFavorites();
+  const { colors, isDark } = useTheme();
+  const styles = useThemedStyles(createStyles);
   const imageWidth = windowWidth - spacing.xl * 2;
+  const previewMaxHeight = windowHeight * PREVIEW_MAX_HEIGHT_RATIO;
 
   const [hymn, setHymn] = useState<Hymn | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [failedPages, setFailedPages] = useState<number[]>([]);
   const [reloadKey, setReloadKey] = useState(0);
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [viewerIndex, setViewerIndex] = useState(0);
 
   const loadHymn = useCallback(async () => {
     setLoading(true);
@@ -109,9 +151,14 @@ export function HymnImageDetailScreen() {
     setFailedPages((prev) => (prev.includes(index) ? prev : [...prev, index]));
   };
 
+  const openViewer = (index: number) => {
+    setViewerIndex(index);
+    setViewerOpen(true);
+  };
+
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar style="light" />
+      <StatusBar style={isDark ? "light" : "dark"} />
       <View style={styles.header}>
         <View style={styles.headerRow}>
           <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
@@ -214,6 +261,8 @@ export function HymnImageDetailScreen() {
                   pageNumber={index + 1}
                   totalPages={imageUrls.length}
                   width={imageWidth}
+                  maxHeight={previewMaxHeight}
+                  onPress={() => openViewer(index)}
                   onError={() => markPageFailed(index)}
                 />
               ),
@@ -221,125 +270,161 @@ export function HymnImageDetailScreen() {
           )}
         </ScrollView>
       )}
+
+      <SheetMusicViewerModal
+        visible={viewerOpen}
+        imageUrls={imageUrls}
+        initialIndex={viewerIndex}
+        onClose={() => setViewerOpen(false)}
+      />
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  header: {
-    paddingHorizontal: spacing.xl,
-    paddingTop: spacing.lg,
-    paddingBottom: spacing.md,
-  },
-  headerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  headerActions: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.md,
-  },
-  headerActionButton: {
-    padding: spacing.xs,
-  },
-  backButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    alignSelf: "flex-start",
-  },
-  backText: {
-    color: colors.accent,
-    fontSize: fontSizes.md,
-    fontWeight: "600",
-  },
-  title: {
-    fontSize: fontSizes.xl,
-    fontWeight: "700",
-    color: colors.textPrimary,
-    marginTop: spacing.md,
-  },
-  author: {
-    fontSize: fontSizes.sm,
-    color: colors.accent,
-    marginTop: spacing.xs,
-  },
-  imageContainer: {
-    padding: spacing.xl,
-    paddingBottom: 40,
-    alignItems: "center",
-  },
-  pageBlock: {
-    width: "100%",
-    alignItems: "center",
-    marginBottom: spacing.xl,
-  },
-  pageLabel: {
-    fontSize: fontSizes.sm,
-    fontWeight: "600",
-    color: colors.textSecondary,
-    alignSelf: "flex-start",
-    marginBottom: spacing.sm,
-  },
-  pageLoading: {
-    paddingVertical: spacing.lg,
-  },
-  pageError: {
-    padding: spacing.lg,
-    backgroundColor: colors.errorBackground,
-    borderRadius: radii.md,
-    width: "100%",
-  },
-  pageErrorText: {
-    color: colors.errorText,
-    fontSize: fontSizes.sm,
-    textAlign: "center",
-  },
-  image: {
-    minHeight: 400,
-  },
-  centered: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: spacing.xl,
-  },
-  emptyTitle: {
-    fontSize: fontSizes.lg,
-    fontWeight: "600",
-    color: colors.textPrimary,
-    marginTop: spacing.lg,
-    textAlign: "center",
-  },
-  emptyText: {
-    fontSize: fontSizes.sm,
-    color: colors.textSecondary,
-    marginTop: spacing.sm,
-    textAlign: "center",
-    lineHeight: 22,
-  },
-  errorBox: {
-    margin: spacing.xl,
-    padding: spacing.lg,
-    backgroundColor: colors.errorBackground,
-    borderRadius: radii.md,
-    width: "100%",
-  },
-  errorText: {
-    color: colors.errorText,
-    fontSize: fontSizes.sm,
-  },
-  retryButton: {
-    marginTop: spacing.md - 2,
-    alignSelf: "flex-start",
-  },
-  retryText: {
-    color: colors.accent,
-    fontWeight: "600",
-  },
-});
+const createPageStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    pageBlock: {
+      width: "100%",
+      alignItems: "center",
+      marginBottom: spacing.xl,
+    },
+    pageLabel: {
+      fontSize: fontSizes.sm,
+      fontWeight: "600",
+      color: colors.textSecondary,
+      alignSelf: "flex-start",
+      marginBottom: spacing.sm,
+    },
+    imagePressable: {
+      alignItems: "center",
+      position: "relative",
+    },
+    imagePressed: {
+      opacity: 0.88,
+    },
+    expandHint: {
+      position: "absolute",
+      bottom: spacing.sm,
+      right: spacing.sm,
+      padding: spacing.xs,
+      borderRadius: radii.sm,
+      backgroundColor: "rgba(0, 0, 0, 0.45)",
+    },
+    pageLoading: {
+      paddingVertical: spacing.lg,
+    },
+  });
+
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    header: {
+      paddingHorizontal: spacing.xl,
+      paddingTop: spacing.lg,
+      paddingBottom: spacing.md,
+    },
+    headerRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+    },
+    headerActions: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: spacing.md,
+    },
+    headerActionButton: {
+      padding: spacing.xs,
+    },
+    backButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      alignSelf: "flex-start",
+    },
+    backText: {
+      color: colors.accent,
+      fontSize: fontSizes.md,
+      fontWeight: "600",
+    },
+    title: {
+      fontSize: fontSizes.xl,
+      fontWeight: "700",
+      color: colors.textPrimary,
+      marginTop: spacing.md,
+    },
+    author: {
+      fontSize: fontSizes.sm,
+      color: colors.accent,
+      marginTop: spacing.xs,
+    },
+    imageContainer: {
+      padding: spacing.xl,
+      paddingBottom: 40,
+      alignItems: "center",
+    },
+    pageBlock: {
+      width: "100%",
+      alignItems: "center",
+      marginBottom: spacing.xl,
+    },
+    pageLabel: {
+      fontSize: fontSizes.sm,
+      fontWeight: "600",
+      color: colors.textSecondary,
+      alignSelf: "flex-start",
+      marginBottom: spacing.sm,
+    },
+    pageError: {
+      padding: spacing.lg,
+      backgroundColor: colors.errorBackground,
+      borderRadius: radii.md,
+      width: "100%",
+    },
+    pageErrorText: {
+      color: colors.errorText,
+      fontSize: fontSizes.sm,
+      textAlign: "center",
+    },
+    centered: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      paddingHorizontal: spacing.xl,
+    },
+    emptyTitle: {
+      fontSize: fontSizes.lg,
+      fontWeight: "600",
+      color: colors.textPrimary,
+      marginTop: spacing.lg,
+      textAlign: "center",
+    },
+    emptyText: {
+      fontSize: fontSizes.sm,
+      color: colors.textSecondary,
+      marginTop: spacing.sm,
+      textAlign: "center",
+      lineHeight: 22,
+    },
+    errorBox: {
+      margin: spacing.xl,
+      padding: spacing.lg,
+      backgroundColor: colors.errorBackground,
+      borderRadius: radii.md,
+      width: "100%",
+    },
+    errorText: {
+      color: colors.errorText,
+      fontSize: fontSizes.sm,
+    },
+    retryButton: {
+      marginTop: spacing.md - 2,
+      alignSelf: "flex-start",
+    },
+    retryText: {
+      color: colors.accent,
+      fontWeight: "600",
+    },
+  });
