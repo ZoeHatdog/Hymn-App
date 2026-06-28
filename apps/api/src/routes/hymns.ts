@@ -43,6 +43,9 @@ function toHymn(
     author: string;
     lyrics: string;
     imagePaths: string[];
+    tags: string[];
+    library: string | null;
+    link: string | null;
     createdAt: Date;
     updatedAt: Date;
   },
@@ -53,6 +56,9 @@ function toHymn(
     author: hymn.author,
     lyrics: hymn.lyrics,
     imageUrls: buildImageUrls(request, hymn.imagePaths),
+    tags: hymn.tags,
+    library: hymn.library,
+    link: hymn.link,
     createdAt: hymn.createdAt.toISOString(),
     updatedAt: hymn.updatedAt.toISOString(),
   };
@@ -78,12 +84,16 @@ export async function hymnRoutes(app: FastifyInstance) {
       return { success: true, data: [] };
     }
 
+    const tagQuery = query.toLowerCase();
+
     const hymns = await prisma.hymn.findMany({
       where: {
         OR: [
           { title: { contains: query, mode: "insensitive" } },
           { author: { contains: query, mode: "insensitive" } },
           { lyrics: { contains: query, mode: "insensitive" } },
+          { library: { contains: query, mode: "insensitive" } },
+          { tagsSearch: { contains: tagQuery } },
         ],
       },
       orderBy: { title: "asc" },

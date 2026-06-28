@@ -4,6 +4,9 @@ export interface Hymn {
   author: string;
   lyrics: string;
   imageUrls: string[];
+  tags: string[];
+  library: string | null;
+  link: string | null;
   createdAt: string;
   updatedAt: string;
 }

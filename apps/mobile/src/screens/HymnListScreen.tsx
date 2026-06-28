@@ -78,7 +78,7 @@ export function HymnListScreen() {
       <View style={styles.searchWrap}>
         <TextInput
           style={styles.searchInput}
-          placeholder="Search hymns..."
+          placeholder="Search hymns, tags, or library..."
           placeholderTextColor={colors.textSecondary}
           value={searchQuery}
           onChangeText={setSearchQuery}

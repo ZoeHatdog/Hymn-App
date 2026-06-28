@@ -9,7 +9,7 @@ async function fetchApi<T>(path: string): Promise<T> {
     response = await fetch(`${apiUrl}${path}`);
   } catch {
     throw new Error(
-      `Cannot reach the API at ${apiUrl}. Start it with "npm run api" from the project root.`,
+      `Cannot reach the API at ${apiUrl}.`,
     );
   }
 

@@ -1,6 +1,11 @@
 title: Praise, My Soul, The King of Heaven
 author: Henry Francis Lyte (lyrics), John Goss (music)
 image_folder: TBC - Hymns/Highest-Size
+tags: Peace, Joy, Praise, Worship -- Sample Only
+library: TBC / Rejoice -- Sample Only
+link: (youtube link) -- sample only
+
+
 
 Praise, my soul, the King of heaven;
 to his feet thy tribute bring;

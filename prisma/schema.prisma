@@ -13,6 +13,10 @@ model Hymn {
   author     String
   lyrics     String   @db.Text
   imagePaths String[] @default([])
+  tags       String[] @default([])
+  tagsSearch String   @default("")
+  library    String?
+  link       String?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 

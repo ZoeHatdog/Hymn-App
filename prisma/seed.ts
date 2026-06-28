@@ -1,7 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { basename, extname, join, relative } from "node:path";
-import { parseHymnFile } from "@hymn-app/shared-utils";
+import { buildTagsSearchText, parseHymnFile } from "@hymn-app/shared-utils";
 
 const prisma = new PrismaClient();
 const hymnsDir = join(process.cwd(), "data", "hymns");
@@ -53,14 +53,25 @@ async function main() {
 
   for (const file of files) {
     const content = readFileSync(join(hymnsDir, file), "utf-8");
-    const { title, author, lyrics, imageFolder } = parseHymnFile(content);
+    const { title, author, lyrics, imageFolder, tags, library, link } =
+      parseHymnFile(content);
     const stem = basename(file, extname(file));
     const imagePaths = resolveImagePaths(stem, imageFolder);
+    const tagsSearch = buildTagsSearchText(tags);
 
     await prisma.hymn.upsert({
       where: { title },
-      update: { author, lyrics, imagePaths },
-      create: { title, author, lyrics, imagePaths },
+      update: { author, lyrics, imagePaths, tags, tagsSearch, library, link },
+      create: {
+        title,
+        author,
+        lyrics,
+        imagePaths,
+        tags,
+        tagsSearch,
+        library,
+        link,
+      },
     });
 
     const imageNote =
