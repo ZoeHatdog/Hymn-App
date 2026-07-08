@@ -2,6 +2,7 @@ export interface ParsedHymnFile {
   title: string;
   author: string;
   imageFolder: string | null;
+  imageFile: string | null;
   tags: string[];
   library: string | null;
   link: string | null;
@@ -36,6 +37,7 @@ export function parseHymnFile(content: string): ParsedHymnFile {
   let title = "Untitled";
   let author = "Unknown";
   let imageFolder: string | null = null;
+  let imageFile: string | null = null;
   let tags: string[] = [];
   let library: string | null = null;
   let link: string | null = null;
@@ -54,6 +56,10 @@ export function parseHymnFile(content: string): ParsedHymnFile {
       }
       if (line.startsWith("image_folder:")) {
         imageFolder = stripMetadataComment(line.replace("image_folder:", "")) || null;
+        continue;
+      }
+      if (line.startsWith("image_file:")) {
+        imageFile = stripMetadataComment(line.replace("image_file:", "")) || null;
         continue;
       }
       if (line.startsWith("tags:")) {
@@ -90,6 +96,7 @@ export function parseHymnFile(content: string): ParsedHymnFile {
     title,
     author,
     imageFolder,
+    imageFile,
     tags,
     library,
     link,

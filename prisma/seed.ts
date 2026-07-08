@@ -41,7 +41,23 @@ function findFlatImagePath(stem: string): string[] {
   return [];
 }
 
-function resolveImagePaths(stem: string, imageFolder: string | null): string[] {
+function findImagePathFromFile(relativeFile: string): string[] {
+  const absolutePath = join(imagesDir, relativeFile);
+  if (!existsSync(absolutePath)) {
+    console.warn(`  Warning: image file not found: ${relativeFile}`);
+    return [];
+  }
+  return [toRelativeImagePath(absolutePath)];
+}
+
+function resolveImagePaths(
+  stem: string,
+  imageFolder: string | null,
+  imageFile: string | null,
+): string[] {
+  if (imageFile) {
+    return findImagePathFromFile(imageFile);
+  }
   if (imageFolder) {
     return findImagePathsFromFolder(imageFolder);
   }
@@ -53,10 +69,10 @@ async function main() {
 
   for (const file of files) {
     const content = readFileSync(join(hymnsDir, file), "utf-8");
-    const { title, author, lyrics, imageFolder, tags, library, link } =
+    const { title, author, lyrics, imageFolder, imageFile, tags, library, link } =
       parseHymnFile(content);
     const stem = basename(file, extname(file));
-    const imagePaths = resolveImagePaths(stem, imageFolder);
+    const imagePaths = resolveImagePaths(stem, imageFolder, imageFile);
     const tagsSearch = buildTagsSearchText(tags);
 
     await prisma.hymn.upsert({

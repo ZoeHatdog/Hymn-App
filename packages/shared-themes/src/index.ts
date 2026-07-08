@@ -1,17 +1,10 @@
-/**
- * Shared design tokens for the Hymn App.
- *
- * Brand colors are taken from the TBC logo SVGs in this package
- * (Logo/SVG): deep blue #19347f and slate blue #5777a9.
- * Brand typefaces are Besley (serif) and Noto Sans (sans-serif);
- * see the licenses in "Font Files". Load them with expo-font before
- * applying the font family names below.
- */
+
 
 export const palette = {
   brandBlue: "#19347f",
   brandSlate: "#5777a9",
   gold: "#ecc94b",
+  goldDark: "#9a7b0a",
   navyDeep: "#111e4e",
   navySurface: "#243d8c",
   white: "#ffffff",
@@ -25,7 +18,7 @@ export type ColorScheme = "light" | "dark";
 
 export const darkColors = {
   background: palette.navyDeep,
-  // Matches the white canvas of "TBC logo.jpeg" so the logo blends in seamlessly.
+ 
   backgroundLight: palette.white,
   surface: palette.navySurface,
   primary: palette.brandBlue,
@@ -47,7 +40,7 @@ export const lightColors = {
   surface: palette.white,
   primary: palette.brandBlue,
   primaryLight: palette.brandSlate,
-  accent: palette.gold,
+  accent: palette.goldDark,
   textPrimary: palette.navyDeep,
   textSecondary: palette.brandSlate,
   textBody: palette.navyDeep,

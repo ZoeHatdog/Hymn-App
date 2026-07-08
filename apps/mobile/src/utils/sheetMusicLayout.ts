@@ -23,3 +23,24 @@ export function computeContainedSize(
     height: naturalHeight * scale,
   };
 }
+
+/** Scale to fit width; height follows aspect ratio (for scrollable single-page sheet music). */
+export function computeWidthScaledSize(
+  naturalWidth: number,
+  naturalHeight: number,
+  availableWidth: number,
+  maxWidth: number = SHEET_MUSIC_MAX_WIDTH,
+): { width: number; height: number } {
+  if (naturalWidth <= 0 || naturalHeight <= 0) {
+    const boxWidth = Math.min(availableWidth, maxWidth);
+    return { width: boxWidth, height: boxWidth };
+  }
+
+  const boxWidth = Math.min(availableWidth, maxWidth);
+  const scale = boxWidth / naturalWidth;
+
+  return {
+    width: boxWidth,
+    height: naturalHeight * scale,
+  };
+}

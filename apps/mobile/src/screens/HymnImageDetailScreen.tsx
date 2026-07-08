@@ -27,7 +27,7 @@ import { useThemedStyles } from "../hooks/useThemedStyles";
 import { useFavorites } from "../state/FavoritesContext";
 import { useTheme } from "../state/ThemeContext";
 import type { RootStackParamList } from "../navigation/types";
-import { computeContainedSize } from "../utils/sheetMusicLayout";
+import { computeContainedSize, computeWidthScaledSize } from "../utils/sheetMusicLayout";
 
 type ImageDetailRoute = RouteProp<RootStackParamList, "HymnImageDetail">;
 
@@ -39,6 +39,7 @@ function SheetMusicPage({
   totalPages,
   width,
   maxHeight,
+  scrollable,
   onPress,
   onError,
 }: {
@@ -47,6 +48,7 @@ function SheetMusicPage({
   totalPages: number;
   width: number;
   maxHeight: number;
+  scrollable?: boolean;
   onPress: () => void;
   onError: () => void;
 }) {
@@ -56,6 +58,11 @@ function SheetMusicPage({
   const [displaySize, setDisplaySize] = useState<{ width: number; height: number } | null>(
     null,
   );
+
+  const computeSize = (naturalWidth: number, naturalHeight: number) =>
+    scrollable
+      ? computeWidthScaledSize(naturalWidth, naturalHeight, width)
+      : computeContainedSize(naturalWidth, naturalHeight, width, maxHeight);
 
   return (
     <View style={styles.pageBlock}>
@@ -68,7 +75,9 @@ function SheetMusicPage({
         onPress={onPress}
         style={({ pressed }) => [styles.imagePressable, pressed && styles.imagePressed]}
         accessibilityRole="button"
-        accessibilityLabel={`View page ${pageNumber} full screen`}
+        accessibilityLabel={
+          scrollable ? "View sheet music full screen" : `View page ${pageNumber} full screen`
+        }
         accessibilityHint="Opens sheet music viewer"
       >
         {loading && (
@@ -81,14 +90,12 @@ function SheetMusicPage({
           style={
             displaySize
               ? { width: displaySize.width, height: displaySize.height }
-              : { width, height: maxHeight * 0.5 }
+              : { width, height: scrollable ? width * 1.2 : maxHeight * 0.5 }
           }
           resizeMode="contain"
           onLoad={(event) => {
             const { width: naturalWidth, height: naturalHeight } = event.nativeEvent.source;
-            setDisplaySize(
-              computeContainedSize(naturalWidth, naturalHeight, width, maxHeight),
-            );
+            setDisplaySize(computeSize(naturalWidth, naturalHeight));
             setLoading(false);
           }}
           onError={() => {
@@ -144,6 +151,7 @@ export function HymnImageDetailScreen() {
   const favorite = isFavorite(hymnId);
   const imageUrls = hymn?.imageUrls ?? [];
   const hasImages = imageUrls.length > 0;
+  const isScrollableSinglePage = imageUrls.length === 1;
   const allPagesFailed =
     hasImages && failedPages.length === imageUrls.length;
 
@@ -262,6 +270,7 @@ export function HymnImageDetailScreen() {
                   totalPages={imageUrls.length}
                   width={imageWidth}
                   maxHeight={previewMaxHeight}
+                  scrollable={isScrollableSinglePage}
                   onPress={() => openViewer(index)}
                   onError={() => markPageFailed(index)}
                 />
