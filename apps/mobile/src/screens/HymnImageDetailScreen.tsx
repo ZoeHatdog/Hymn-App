@@ -3,7 +3,6 @@ import {
   ActivityIndicator,
   Image,
   Pressable,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
@@ -11,6 +10,7 @@ import {
   useWindowDimensions,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import {
   useNavigation,
@@ -23,6 +23,7 @@ import type { ThemeColors } from "@hymn-app/shared-themes";
 import { fontSizes, palette, radii, spacing } from "@hymn-app/shared-themes";
 import { SheetMusicViewerModal } from "../components/SheetMusicViewerModal";
 import { getHymn } from "../api";
+import { useResponsiveLayout } from "../hooks/useResponsiveLayout";
 import { useThemedStyles } from "../hooks/useThemedStyles";
 import { useFavorites } from "../state/FavoritesContext";
 import { useTheme } from "../state/ThemeContext";
@@ -115,12 +116,17 @@ export function HymnImageDetailScreen() {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const { params } = useRoute<ImageDetailRoute>();
   const { hymnId } = params;
-  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  const { height: windowHeight } = useWindowDimensions();
   const { isFavorite, toggleFavorite } = useFavorites();
   const { colors, isDark } = useTheme();
   const styles = useThemedStyles(createStyles);
-  const imageWidth = windowWidth - spacing.xl * 2;
-  const previewMaxHeight = windowHeight * PREVIEW_MAX_HEIGHT_RATIO;
+  const layout = useResponsiveLayout();
+  const imageWidth = Math.min(
+    layout.contentMaxWidth,
+    layout.width - layout.screenPadding * 2,
+  );
+  const previewMaxHeight =
+    windowHeight * (layout.isTablet ? 0.55 : PREVIEW_MAX_HEIGHT_RATIO);
 
   const [hymn, setHymn] = useState<Hymn | null>(null);
   const [loading, setLoading] = useState(true);
@@ -165,48 +171,81 @@ export function HymnImageDetailScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>
       <StatusBar style={isDark ? "light" : "dark"} />
-      <View style={styles.header}>
-        <View style={styles.headerRow}>
-          <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Ionicons name="chevron-back" size={20} color={colors.accent} />
-            <Text style={styles.backText}>Back</Text>
-          </Pressable>
-          <View style={styles.headerActions}>
+      <View
+        style={[
+          styles.header,
+          {
+            paddingTop: layout.headerPaddingTop,
+            paddingHorizontal: layout.headerPaddingHorizontal,
+          },
+        ]}
+      >
+        <View
+          style={[
+            styles.headerInner,
+            layout.isTablet && {
+              maxWidth: layout.contentMaxWidth,
+              alignSelf: "center",
+              width: "100%",
+            },
+          ]}
+        >
+          <View style={styles.headerRow}>
             <Pressable
-              hitSlop={10}
-              onPress={() =>
-                navigation.navigate("HymnTextDetail", { hymnId })
-              }
-              accessibilityRole="button"
-              accessibilityLabel="View lyrics"
-              style={styles.headerActionButton}
-            >
-              <Ionicons name="document-text-outline" size={22} color={colors.accent} />
-            </Pressable>
-            <Pressable
-              hitSlop={10}
-              onPress={() => toggleFavorite(hymnId)}
-              accessibilityRole="button"
-              accessibilityLabel={
-                favorite ? "Remove from favorites" : "Add to favorites"
-              }
+              onPress={() => navigation.goBack()}
+              style={styles.backButton}
+              hitSlop={8}
             >
               <Ionicons
-                name={favorite ? "star" : "star-outline"}
-                size={24}
-                color={favorite ? colors.accent : colors.textSecondary}
+                name="chevron-back"
+                size={layout.backIconSize}
+                color={colors.accent}
               />
+              <Text style={styles.backText}>Back</Text>
             </Pressable>
+            <View style={styles.headerActions}>
+              <Pressable
+                hitSlop={10}
+                onPress={() => navigation.navigate("HymnTextDetail", { hymnId })}
+                accessibilityRole="button"
+                accessibilityLabel="View lyrics"
+                style={styles.headerActionButton}
+              >
+                <Ionicons
+                  name="document-text-outline"
+                  size={layout.actionIconSize}
+                  color={colors.accent}
+                />
+              </Pressable>
+              <Pressable
+                hitSlop={10}
+                onPress={() => toggleFavorite(hymnId)}
+                accessibilityRole="button"
+                accessibilityLabel={
+                  favorite ? "Remove from favorites" : "Add to favorites"
+                }
+              >
+                <Ionicons
+                  name={favorite ? "star" : "star-outline"}
+                  size={layout.actionIconSize + 2}
+                  color={favorite ? colors.accent : colors.textSecondary}
+                />
+              </Pressable>
+            </View>
           </View>
+          {hymn && (
+            <>
+              <Text style={[styles.title, { fontSize: layout.titleFontSize }]}>
+                {hymn.title}
+              </Text>
+              <Text style={[styles.author, { fontSize: layout.authorFontSize }]}>
+                by {hymn.author}
+              </Text>
+            </>
+          )}
         </View>
-        {hymn && (
-          <>
-            <Text style={styles.title}>{hymn.title}</Text>
-            <Text style={styles.author}>by {hymn.author}</Text>
-          </>
-        )}
       </View>
 
       {loading && (
@@ -216,7 +255,7 @@ export function HymnImageDetailScreen() {
       )}
 
       {error && (
-        <View style={styles.errorBox}>
+        <View style={[styles.errorBox, { marginHorizontal: layout.screenPadding }]}>
           <Text style={styles.errorText}>{error}</Text>
           <Pressable onPress={loadHymn} style={styles.retryButton}>
             <Text style={styles.retryText}>Retry</Text>
@@ -235,7 +274,17 @@ export function HymnImageDetailScreen() {
       )}
 
       {!loading && !error && hymn && hasImages && (
-        <ScrollView contentContainerStyle={styles.imageContainer}>
+        <ScrollView
+          contentContainerStyle={[
+            styles.imageContainer,
+            {
+              paddingHorizontal: layout.screenPadding,
+              maxWidth: layout.contentMaxWidth + layout.screenPadding * 2,
+              width: "100%",
+              alignSelf: "center",
+            },
+          ]}
+        >
           {allPagesFailed ? (
             <View style={styles.errorBox}>
               <Text style={styles.errorText}>Failed to load sheet music images.</Text>
@@ -331,14 +380,16 @@ const createStyles = (colors: ThemeColors) =>
       backgroundColor: colors.background,
     },
     header: {
-      paddingHorizontal: spacing.xl,
-      paddingTop: spacing.lg,
       paddingBottom: spacing.md,
+    },
+    headerInner: {
+      width: "100%",
     },
     headerRow: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
+      minHeight: 44,
     },
     headerActions: {
       flexDirection: "row",
@@ -352,6 +403,8 @@ const createStyles = (colors: ThemeColors) =>
       flexDirection: "row",
       alignItems: "center",
       alignSelf: "flex-start",
+      paddingVertical: spacing.xs,
+      paddingRight: spacing.sm,
     },
     backText: {
       color: colors.accent,
@@ -359,19 +412,17 @@ const createStyles = (colors: ThemeColors) =>
       fontWeight: "600",
     },
     title: {
-      fontSize: fontSizes.xl,
       fontWeight: "700",
       color: colors.textPrimary,
       marginTop: spacing.md,
     },
     author: {
-      fontSize: fontSizes.sm,
       color: colors.accent,
       marginTop: spacing.xs,
     },
     imageContainer: {
-      padding: spacing.xl,
-      paddingBottom: 40,
+      paddingBottom: 48,
+      paddingTop: spacing.sm,
       alignItems: "center",
     },
     pageBlock: {

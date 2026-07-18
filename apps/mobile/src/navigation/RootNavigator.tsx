@@ -16,7 +16,7 @@ export function RootNavigator() {
       <Stack.Screen
         name="HymnViewPicker"
         component={HymnViewPickerScreen}
-        options={{ presentation: "card" }}
+        options={{ presentation: "card", fullScreenGestureEnabled: false }}
       />
       <Stack.Screen
         name="HymnTextDetail"

@@ -2,13 +2,13 @@ import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import {
   useNavigation,
@@ -20,6 +20,7 @@ import type { Hymn } from "@hymn-app/shared-types";
 import type { ThemeColors } from "@hymn-app/shared-themes";
 import { fontSizes, radii, spacing } from "@hymn-app/shared-themes";
 import { getHymn } from "../api";
+import { useResponsiveLayout } from "../hooks/useResponsiveLayout";
 import { useThemedStyles } from "../hooks/useThemedStyles";
 import { useFavorites } from "../state/FavoritesContext";
 import { useTheme } from "../state/ThemeContext";
@@ -34,6 +35,7 @@ export function HymnTextDetailScreen() {
   const { isFavorite, toggleFavorite } = useFavorites();
   const { colors, isDark } = useTheme();
   const styles = useThemedStyles(createStyles);
+  const layout = useResponsiveLayout();
 
   const [hymn, setHymn] = useState<Hymn | null>(null);
   const [loading, setLoading] = useState(true);
@@ -59,48 +61,77 @@ export function HymnTextDetailScreen() {
   const favorite = isFavorite(hymnId);
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>
       <StatusBar style={isDark ? "light" : "dark"} />
-      <View style={styles.header}>
-        <View style={styles.headerRow}>
-          <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Ionicons name="chevron-back" size={20} color={colors.accent} />
-            <Text style={styles.backText}>Back</Text>
-          </Pressable>
-          <View style={styles.headerActions}>
+      <View
+        style={[
+          styles.header,
+          {
+            paddingTop: layout.headerPaddingTop,
+            paddingHorizontal: layout.headerPaddingHorizontal,
+          },
+        ]}
+      >
+        <View
+          style={[
+            styles.headerInner,
+            layout.isTablet && { maxWidth: layout.contentMaxWidth, alignSelf: "center", width: "100%" },
+          ]}
+        >
+          <View style={styles.headerRow}>
             <Pressable
-              hitSlop={10}
-              onPress={() =>
-                navigation.navigate("HymnImageDetail", { hymnId })
-              }
-              accessibilityRole="button"
-              accessibilityLabel="View sheet music"
-              style={styles.headerActionButton}
-            >
-              <Ionicons name="musical-notes-outline" size={22} color={colors.accent} />
-            </Pressable>
-            <Pressable
-              hitSlop={10}
-              onPress={() => toggleFavorite(hymnId)}
-              accessibilityRole="button"
-              accessibilityLabel={
-                favorite ? "Remove from favorites" : "Add to favorites"
-              }
+              onPress={() => navigation.goBack()}
+              style={styles.backButton}
+              hitSlop={8}
             >
               <Ionicons
-                name={favorite ? "star" : "star-outline"}
-                size={24}
-                color={favorite ? colors.accent : colors.textSecondary}
+                name="chevron-back"
+                size={layout.backIconSize}
+                color={colors.accent}
               />
+              <Text style={styles.backText}>Back</Text>
             </Pressable>
+            <View style={styles.headerActions}>
+              <Pressable
+                hitSlop={10}
+                onPress={() => navigation.navigate("HymnImageDetail", { hymnId })}
+                accessibilityRole="button"
+                accessibilityLabel="View sheet music"
+                style={styles.headerActionButton}
+              >
+                <Ionicons
+                  name="musical-notes-outline"
+                  size={layout.actionIconSize}
+                  color={colors.accent}
+                />
+              </Pressable>
+              <Pressable
+                hitSlop={10}
+                onPress={() => toggleFavorite(hymnId)}
+                accessibilityRole="button"
+                accessibilityLabel={
+                  favorite ? "Remove from favorites" : "Add to favorites"
+                }
+              >
+                <Ionicons
+                  name={favorite ? "star" : "star-outline"}
+                  size={layout.actionIconSize + 2}
+                  color={favorite ? colors.accent : colors.textSecondary}
+                />
+              </Pressable>
+            </View>
           </View>
+          {hymn && (
+            <>
+              <Text style={[styles.title, { fontSize: layout.titleFontSize }]}>
+                {hymn.title}
+              </Text>
+              <Text style={[styles.author, { fontSize: layout.authorFontSize }]}>
+                by {hymn.author}
+              </Text>
+            </>
+          )}
         </View>
-        {hymn && (
-          <>
-            <Text style={styles.title}>{hymn.title}</Text>
-            <Text style={styles.author}>by {hymn.author}</Text>
-          </>
-        )}
       </View>
 
       {loading && (
@@ -110,7 +141,7 @@ export function HymnTextDetailScreen() {
       )}
 
       {error && (
-        <View style={styles.errorBox}>
+        <View style={[styles.errorBox, { marginHorizontal: layout.screenPadding }]}>
           <Text style={styles.errorText}>{error}</Text>
           <Pressable onPress={loadHymn} style={styles.retryButton}>
             <Text style={styles.retryText}>Retry</Text>
@@ -119,8 +150,28 @@ export function HymnTextDetailScreen() {
       )}
 
       {!loading && !error && hymn && (
-        <ScrollView contentContainerStyle={styles.lyricsContainer}>
-          <Text style={styles.lyrics}>{hymn.lyrics}</Text>
+        <ScrollView
+          contentContainerStyle={[
+            styles.lyricsContainer,
+            {
+              paddingHorizontal: layout.screenPadding,
+              maxWidth: layout.contentMaxWidth,
+              width: "100%",
+              alignSelf: "center",
+            },
+          ]}
+        >
+          <Text
+            style={[
+              styles.lyrics,
+              {
+                fontSize: layout.lyricsFontSize,
+                lineHeight: layout.lyricsLineHeight,
+              },
+            ]}
+          >
+            {hymn.lyrics}
+          </Text>
         </ScrollView>
       )}
     </SafeAreaView>
@@ -134,14 +185,16 @@ const createStyles = (colors: ThemeColors) =>
       backgroundColor: colors.background,
     },
     header: {
-      paddingHorizontal: spacing.xl,
-      paddingTop: spacing.lg,
       paddingBottom: spacing.md,
+    },
+    headerInner: {
+      width: "100%",
     },
     headerRow: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
+      minHeight: 44,
     },
     headerActions: {
       flexDirection: "row",
@@ -155,6 +208,8 @@ const createStyles = (colors: ThemeColors) =>
       flexDirection: "row",
       alignItems: "center",
       alignSelf: "flex-start",
+      paddingVertical: spacing.xs,
+      paddingRight: spacing.sm,
     },
     backText: {
       color: colors.accent,
@@ -162,23 +217,19 @@ const createStyles = (colors: ThemeColors) =>
       fontWeight: "600",
     },
     title: {
-      fontSize: fontSizes.xl,
       fontWeight: "700",
       color: colors.textPrimary,
       marginTop: spacing.md,
     },
     author: {
-      fontSize: fontSizes.sm,
       color: colors.accent,
       marginTop: spacing.xs,
     },
     lyricsContainer: {
-      padding: spacing.xl,
-      paddingBottom: 40,
+      paddingBottom: 48,
+      paddingTop: spacing.sm,
     },
     lyrics: {
-      fontSize: 17,
-      lineHeight: 28,
       color: colors.textBody,
     },
     centered: {
@@ -187,7 +238,7 @@ const createStyles = (colors: ThemeColors) =>
       alignItems: "center",
     },
     errorBox: {
-      margin: spacing.xl,
+      marginVertical: spacing.xl,
       padding: spacing.lg,
       backgroundColor: colors.errorBackground,
       borderRadius: radii.md,

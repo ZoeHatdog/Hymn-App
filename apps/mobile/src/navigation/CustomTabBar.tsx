@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import type { ThemeColors } from "@hymn-app/shared-themes";
 import { fontSizes, radii, spacing } from "@hymn-app/shared-themes";
+import { useResponsiveLayout } from "../hooks/useResponsiveLayout";
 import { useThemedStyles } from "../hooks/useThemedStyles";
 import { useTheme } from "../state/ThemeContext";
 import type { MainTabParamList } from "./types";
@@ -35,12 +36,17 @@ export function CustomTabBar({
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
   const styles = useThemedStyles(createStyles);
+  const { isTablet } = useResponsiveLayout();
+  const iconSize = isTablet ? 24 : 22;
 
   return (
     <View
       style={[
         styles.bar,
-        { paddingBottom: Math.max(insets.bottom, spacing.sm) },
+        {
+          paddingBottom: Math.max(insets.bottom, spacing.sm),
+          paddingTop: isTablet ? spacing.md : spacing.sm,
+        },
       ]}
     >
       {state.routes.map((route, index) => {
@@ -68,15 +74,25 @@ export function CustomTabBar({
             onPress={onPress}
             style={styles.tab}
           >
-            <View style={[styles.iconWrap, isFocused && styles.iconWrapActive]}>
+            <View
+              style={[
+                styles.iconWrap,
+                isTablet && styles.iconWrapTablet,
+                isFocused && styles.iconWrapActive,
+              ]}
+            >
               <Ionicons
                 name={isFocused ? meta.iconActive : meta.icon}
-                size={22}
+                size={iconSize}
                 color={isFocused ? colors.onAccent : colors.textSecondary}
               />
             </View>
             <Text
-              style={[styles.label, isFocused && styles.labelActive]}
+              style={[
+                styles.label,
+                isTablet && styles.labelTablet,
+                isFocused && styles.labelActive,
+              ]}
               numberOfLines={1}
             >
               {meta.label}
@@ -117,12 +133,19 @@ const createStyles = (colors: ThemeColors) =>
       justifyContent: "center",
       borderRadius: radii.pill,
     },
+    iconWrapTablet: {
+      width: 52,
+      height: 36,
+    },
     iconWrapActive: {
       backgroundColor: colors.accent,
     },
     label: {
       fontSize: fontSizes.xs,
       color: colors.textSecondary,
+    },
+    labelTablet: {
+      fontSize: fontSizes.sm,
     },
     labelActive: {
       color: colors.accent,

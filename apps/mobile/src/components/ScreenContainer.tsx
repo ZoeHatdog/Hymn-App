@@ -1,8 +1,10 @@
 import type { ReactNode } from "react";
-import { SafeAreaView, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
+import { SafeAreaView } from "react-native-safe-area-context";
 import type { ThemeColors } from "@hymn-app/shared-themes";
 import { fontSizes, spacing } from "@hymn-app/shared-themes";
+import { useResponsiveLayout } from "../hooks/useResponsiveLayout";
 import { useThemedStyles } from "../hooks/useThemedStyles";
 import { useTheme } from "../state/ThemeContext";
 
@@ -29,20 +31,73 @@ export function ScreenContainer({
 }: ScreenContainerProps) {
   const { isDark } = useTheme();
   const styles = useThemedStyles(createStyles);
+  const layout = useResponsiveLayout();
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={["left", "right", "bottom"]}>
       <StatusBar style={isDark ? "light" : "dark"} />
       {(title || subtitle) && (
-        <View style={styles.header}>
-          <View style={styles.headerText}>
-            {title ? <Text style={styles.title}>{title}</Text> : null}
-            {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
+        <View
+          style={[
+            styles.header,
+            {
+              paddingTop: layout.headerPaddingTop,
+              paddingHorizontal: layout.headerPaddingHorizontal,
+            },
+          ]}
+        >
+          <View
+            style={[
+              styles.headerRow,
+              layout.isTablet && {
+                maxWidth: layout.contentMaxWidth,
+                width: "100%",
+                alignSelf: "center",
+              },
+            ]}
+          >
+            <View style={styles.headerText}>
+              {title ? (
+                <Text
+                  style={[
+                    styles.title,
+                    layout.isTablet && { fontSize: fontSizes.display },
+                  ]}
+                >
+                  {title}
+                </Text>
+              ) : null}
+              {subtitle ? (
+                <Text
+                  style={[
+                    styles.subtitle,
+                    layout.isTablet && { fontSize: fontSizes.md },
+                  ]}
+                >
+                  {subtitle}
+                </Text>
+              ) : null}
+            </View>
+            {headerRight ? <View>{headerRight}</View> : null}
           </View>
-          {headerRight ? <View>{headerRight}</View> : null}
         </View>
       )}
-      <View style={[styles.body, padded && styles.bodyPadded]}>{children}</View>
+      <View
+        style={[
+          styles.body,
+          padded && {
+            paddingHorizontal: layout.screenPadding,
+          },
+          layout.isTablet &&
+            padded && {
+              maxWidth: layout.contentMaxWidth + layout.screenPadding * 2,
+              width: "100%",
+              alignSelf: "center",
+            },
+        ]}
+      >
+        {children}
+      </View>
     </SafeAreaView>
   );
 }
@@ -54,12 +109,12 @@ const createStyles = (colors: ThemeColors) =>
       backgroundColor: colors.background,
     },
     header: {
+      paddingBottom: spacing.md,
+    },
+    headerRow: {
       flexDirection: "row",
       alignItems: "flex-end",
       justifyContent: "space-between",
-      paddingHorizontal: spacing.xl,
-      paddingTop: spacing.lg,
-      paddingBottom: spacing.md,
     },
     headerText: {
       flex: 1,
@@ -76,8 +131,5 @@ const createStyles = (colors: ThemeColors) =>
     },
     body: {
       flex: 1,
-    },
-    bodyPadded: {
-      paddingHorizontal: spacing.xl,
     },
   });
