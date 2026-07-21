@@ -19,24 +19,34 @@ async function fetchApi<T>(path: string): Promise<T> {
 
   let response: Response;
   try {
-    response = await fetch(`${apiUrl}${path}`, { signal: controller.signal }  ); // abort if the request takes too long 
+    response = await fetch(`${apiUrl}${path}`, { signal: controller.signal });
   } catch (err) {
     if (err instanceof Error && err.name === "AbortError") {
-      throw new Error(`Request timed out reaching the API at ${apiUrl}.`);
+      throw new Error(
+        "Connection timed out. Check your internet connection and try again.",
+      );
     }
-    throw new Error(`Cannot reach the API at ${apiUrl}.`);
+    throw new Error(
+      "Unable to connect. You're offline or the server is unavailable. Try again when you're back online.",
+    );
   } finally {
     clearTimeout(timeout);
   }
 
   if (!response.ok) {
-    throw new Error(`Request failed: ${response.status}`);
+    throw new Error(
+      "Something went wrong loading data. Please try again in a moment.",
+    );
   }
 
   const json = await response.json();
 
   if (!json.success) {
-    throw new Error(json.error ?? "Unknown API error");
+    throw new Error(
+      typeof json.error === "string" && json.error.trim()
+        ? json.error
+        : "Something went wrong. Please try again.",
+    );
   }
 
   return json.data as T;
