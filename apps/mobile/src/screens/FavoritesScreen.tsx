@@ -13,7 +13,7 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { HymnSummary } from "@hymn-app/shared-types";
 import type { ThemeColors } from "@hymn-app/shared-themes";
 import { fontSizes, spacing } from "@hymn-app/shared-themes";
-import { getHymns } from "../api";
+import { getFavoriteHymnSummaries } from "../api";
 import { ScreenContainer } from "../components/ScreenContainer";
 import { HymnCard } from "../components/HymnCard";
 import { useThemedStyles } from "../hooks/useThemedStyles";
@@ -29,27 +29,32 @@ export function FavoritesScreen() {
   const { colors } = useTheme();
   const styles = useThemedStyles(createStyles);
 
-  const [allHymns, setAllHymns] = useState<HymnSummary[]>([]);
+  const [favorites, setFavorites] = useState<HymnSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const loadHymns = useCallback(async () => {
+  const loadFavorites = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      setAllHymns(await getHymns());
+      const summaries = await getFavoriteHymnSummaries(favoriteIds);
+      setFavorites(summaries);
+
+      if (favoriteIds.length > 0 && summaries.length === 0) {
+        setError(
+          "Favorites aren't available offline yet. Open them while online to cache.",
+        );
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load hymns");
+      setError(err instanceof Error ? err.message : "Failed to load favorites");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [favoriteIds]);
 
   useEffect(() => {
-    loadHymns();
-  }, [loadHymns]);
-
-  const favorites = allHymns.filter((hymn) => favoriteIds.includes(hymn.id));
+    loadFavorites();
+  }, [loadFavorites]);
 
   return (
     <ScreenContainer
@@ -66,7 +71,7 @@ export function FavoritesScreen() {
       {error && !loading && (
         <View style={styles.errorBox}>
           <Text style={styles.errorText}>{error}</Text>
-          <Pressable onPress={loadHymns} style={styles.retryButton}>
+          <Pressable onPress={loadFavorites} style={styles.retryButton}>
             <Text style={styles.retryText}>Retry</Text>
           </Pressable>
         </View>
