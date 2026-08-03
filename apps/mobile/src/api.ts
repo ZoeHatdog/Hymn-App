@@ -106,3 +106,24 @@ export function searchHymns(query: string): Promise<HymnSummary[]> {
   const encoded = encodeURIComponent(query);
   return fetchApi<HymnSummary[]>(`/api/hymns/search?q=${encoded}`);
 }
+
+/** Fetch every hymn and persist it (metadata + images) for offline use. */
+export async function saveAllHymnsToCache(
+  onProgress?: (done: number, total: number) => void,
+): Promise<{ saved: number; failed: number; total: number }> {
+  const summaries = await getHymns();
+  let saved = 0;
+  let failed = 0;
+
+  for (let i = 0; i < summaries.length; i++) {
+    try {
+      await getHymn(summaries[i].id);
+      saved++;
+    } catch {
+      failed++;
+    }
+    onProgress?.(i + 1, summaries.length);
+  }
+
+  return { saved, failed, total: summaries.length };
+}

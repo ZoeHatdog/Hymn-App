@@ -1,9 +1,20 @@
-import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
+import { useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  View,
+} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { ThemeColors } from "@hymn-app/shared-themes";
 import { fontSizes, radii, spacing } from "@hymn-app/shared-themes";
+import { saveAllHymnsToCache } from "../api";
 import { ScreenContainer } from "../components/ScreenContainer";
 import { useThemedStyles } from "../hooks/useThemedStyles";
 import { useFavorites } from "../state/FavoritesContext";
@@ -26,12 +37,49 @@ export function SettingsScreen() {
   const { favoriteIds } = useFavorites();
   const { colors, isDark, setColorScheme } = useTheme();
   const styles = useThemedStyles(createStyles);
+  const [caching, setCaching] = useState(false);
+  const [cacheProgress, setCacheProgress] = useState<string | null>(null);
 
   const infoRows: InfoRow[] = [
     { icon: "star-outline", label: "Saved favorites", value: `${favoriteIds.length}` },
     { icon: "server-outline", label: "API endpoint", value: getApiUrl() },
     { icon: "information-circle-outline", label: "Version", value: "0.1.0" },
   ];
+
+  async function handleSaveAllHymns() {
+    if (caching) return;
+
+    setCaching(true);
+    setCacheProgress(null);
+
+    try {
+      const result = await saveAllHymnsToCache((done, total) => {
+        setCacheProgress(`${done} / ${total}`);
+      });
+
+      if (result.failed === 0) {
+        Alert.alert(
+          "Hymns saved",
+          `${result.saved} hymn${result.saved === 1 ? "" : "s"} saved for offline use.`,
+        );
+      } else {
+        Alert.alert(
+          "Partially saved",
+          `Saved ${result.saved} of ${result.total} hymns. ${result.failed} failed.`,
+        );
+      }
+    } catch (err) {
+      Alert.alert(
+        "Could not save hymns",
+        err instanceof Error
+          ? err.message
+          : "Something went wrong. Check your connection and try again.",
+      );
+    } finally {
+      setCaching(false);
+      setCacheProgress(null);
+    }
+  }
 
   return (
     <ScreenContainer title="Settings" subtitle="App info & preferences" padded={false}>
@@ -52,6 +100,42 @@ export function SettingsScreen() {
               thumbColor={isDark ? colors.accent : colors.surface}
             />
           </View>
+        </View>
+
+        <Text style={styles.sectionLabel}>Offline</Text>
+        <View style={styles.group}>
+          <Pressable
+            style={({ pressed }) => [
+              styles.row,
+              styles.actionRow,
+              pressed && !caching && styles.rowPressed,
+            ]}
+            onPress={handleSaveAllHymns}
+            disabled={caching}
+          >
+            <Ionicons
+              name="download-outline"
+              size={20}
+              color={colors.accent}
+            />
+            <Text style={styles.rowLabel}>
+              {caching ? "Saving hymns…" : "Save all hymns"}
+            </Text>
+            {caching ? (
+              <View style={styles.progress}>
+                {cacheProgress ? (
+                  <Text style={styles.rowValue}>{cacheProgress}</Text>
+                ) : null}
+                <ActivityIndicator size="small" color={colors.accent} />
+              </View>
+            ) : (
+              <Ionicons
+                name="chevron-forward"
+                size={20}
+                color={colors.textSecondary}
+              />
+            )}
+          </Pressable>
         </View>
 
         <Text style={styles.sectionLabel}>About</Text>
@@ -139,6 +223,11 @@ const createStyles = (colors: ThemeColors) =>
       fontSize: fontSizes.sm,
       color: colors.textSecondary,
       maxWidth: "45%",
+    },
+    progress: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: spacing.sm,
     },
     footnote: {
       textAlign: "center",

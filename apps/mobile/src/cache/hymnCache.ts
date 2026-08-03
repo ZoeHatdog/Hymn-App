@@ -8,6 +8,17 @@ function hymnKey(id: string): string {
 }
 
 export async function saveHymnToCache(hymn: Hymn): Promise<CachedHymnRecord> {
+  const existing = await readHymnFromCache(hymn.id);
+
+  if (existing && !isHymnCacheStale(existing, hymn)) {
+    return existing;
+  }
+
+  // Stale or missing: wipe metadata + image folder, then redownload
+  if (existing) {
+    await clearHymnCache(hymn.id);
+  }
+
   const localImagePaths = await downloadHymnImages(hymn);
 
   const cachedHymn: CachedHymnRecord = {
@@ -52,23 +63,30 @@ export async function isHymnCached(id: string): Promise<boolean> {
 
 export async function clearHymnCache(id: string): Promise<void> {
   await AsyncStorage.removeItem(hymnKey(id));
+  const dir = new Directory(Paths.document, "hymns", id);
+  if (dir.exists) {
+    dir.delete();
+  }
 }
 
+export function isHymnCacheStale(
+  cache: CachedHymnRecord,
+  fresh: Hymn,
+): boolean {
+  return cache.hymn.updatedAt !== fresh.updatedAt;
+}
 
-// THIS IS FOR SAVING IMAGE TO THE CACHE
 async function downloadHymnImages(hymn: Hymn): Promise<string[]> {
-    const dir = new Directory(Paths.document, "hymns", hymn.id);
-    if (!dir.exists){
-        dir.create({ intermediates: true, idempotent: true});
-    }
+  const dir = new Directory(Paths.document, "hymns", hymn.id);
+  if (!dir.exists) {
+    dir.create({ intermediates: true, idempotent: true });
+  }
 
-    const localPaths: string[] = [];
+  const localPaths: string[] = [];
 
-    
   for (let i = 0; i < hymn.imageUrls.length; i++) {
     const url = hymn.imageUrls[i];
     const dest = new File(dir, `page-${i}.jpg`);
-    // Skip re-download if already on disk
     if (!dest.exists) {
       await File.downloadFileAsync(url, dest, { idempotent: true });
     }
