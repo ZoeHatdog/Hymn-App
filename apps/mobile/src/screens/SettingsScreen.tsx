@@ -14,7 +14,7 @@ import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { ThemeColors } from "@hymn-app/shared-themes";
 import { fontSizes, radii, spacing } from "@hymn-app/shared-themes";
-import { saveAllHymnsToCache } from "../api";
+import { deleteAllHymnsFromCache, saveAllHymnsToCache } from "../api";
 import { ScreenContainer } from "../components/ScreenContainer";
 import { useThemedStyles } from "../hooks/useThemedStyles";
 import { useFavorites } from "../state/FavoritesContext";
@@ -38,7 +38,10 @@ export function SettingsScreen() {
   const { colors, isDark, setColorScheme } = useTheme();
   const styles = useThemedStyles(createStyles);
   const [caching, setCaching] = useState(false);
+  const [clearing, setClearing] = useState(false);
   const [cacheProgress, setCacheProgress] = useState<string | null>(null);
+
+  const busy = caching || clearing;
 
   const infoRows: InfoRow[] = [
     { icon: "star-outline", label: "Saved favorites", value: `${favoriteIds.length}` },
@@ -47,7 +50,7 @@ export function SettingsScreen() {
   ];
 
   async function handleSaveAllHymns() {
-    if (caching) return;
+    if (busy) return;
 
     setCaching(true);
     setCacheProgress(null);
@@ -81,6 +84,48 @@ export function SettingsScreen() {
     }
   }
 
+  function handleDeleteAllCache() {
+    if (busy) return;
+
+    Alert.alert(
+      "Delete all cache?",
+      "This will remove all saved hymns and their images from this device. Favorites will not be removed.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: () => {
+            void confirmDeleteAllCache();
+          },
+        },
+      ],
+    );
+  }
+
+  async function confirmDeleteAllCache() {
+    setClearing(true);
+
+    try {
+      const cleared = await deleteAllHymnsFromCache();
+      Alert.alert(
+        "Cache cleared",
+        cleared === 0
+          ? "No cached hymns were found."
+          : `Deleted ${cleared} cached hymn${cleared === 1 ? "" : "s"}.`,
+      );
+    } catch (err) {
+      Alert.alert(
+        "Could not clear cache",
+        err instanceof Error
+          ? err.message
+          : "Something went wrong. Please try again.",
+      );
+    } finally {
+      setClearing(false);
+    }
+  }
+
   return (
     <ScreenContainer title="Settings" subtitle="App info & preferences" padded={false}>
       <ScrollView contentContainerStyle={styles.content}>
@@ -108,10 +153,10 @@ export function SettingsScreen() {
             style={({ pressed }) => [
               styles.row,
               styles.actionRow,
-              pressed && !caching && styles.rowPressed,
+              pressed && !busy && styles.rowPressed,
             ]}
             onPress={handleSaveAllHymns}
-            disabled={caching}
+            disabled={busy}
           >
             <Ionicons
               name="download-outline"
@@ -128,6 +173,35 @@ export function SettingsScreen() {
                 ) : null}
                 <ActivityIndicator size="small" color={colors.accent} />
               </View>
+            ) : (
+              <Ionicons
+                name="chevron-forward"
+                size={20}
+                color={colors.textSecondary}
+              />
+            )}
+          </Pressable>
+
+          <Pressable
+            style={({ pressed }) => [
+              styles.row,
+              styles.actionRow,
+              styles.rowBorder,
+              pressed && !busy && styles.rowPressed,
+            ]}
+            onPress={handleDeleteAllCache}
+            disabled={busy}
+          >
+            <Ionicons
+              name="trash-outline"
+              size={20}
+              color={colors.accent}
+            />
+            <Text style={styles.rowLabel}>
+              {clearing ? "Deleting cache…" : "Delete all cache"}
+            </Text>
+            {clearing ? (
+              <ActivityIndicator size="small" color={colors.accent} />
             ) : (
               <Ionicons
                 name="chevron-forward"

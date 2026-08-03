@@ -69,6 +69,23 @@ export async function clearHymnCache(id: string): Promise<void> {
   }
 }
 
+/** Remove all cached hymn metadata and downloaded images. */
+export async function clearAllHymnCache(): Promise<number> {
+  const keys = await AsyncStorage.getAllKeys();
+  const hymnKeys = keys.filter((key) => key.startsWith("hymn-"));
+
+  if (hymnKeys.length > 0) {
+    await AsyncStorage.multiRemove(hymnKeys);
+  }
+
+  const hymnsDir = new Directory(Paths.document, "hymns");
+  if (hymnsDir.exists) {
+    hymnsDir.delete();
+  }
+
+  return hymnKeys.length;
+}
+
 export function isHymnCacheStale(
   cache: CachedHymnRecord,
   fresh: Hymn,

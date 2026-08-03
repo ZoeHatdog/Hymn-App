@@ -1,6 +1,7 @@
 import type { Hymn, HymnSummary } from "@hymn-app/shared-types";
 import { getApiUrl } from "./config";
 import {
+  clearAllHymnCache,
   readCachedHymnSummaries,
   readHymnFromCache,
   saveHymnToCache,
@@ -107,7 +108,6 @@ export function searchHymns(query: string): Promise<HymnSummary[]> {
   return fetchApi<HymnSummary[]>(`/api/hymns/search?q=${encoded}`);
 }
 
-/** Fetch every hymn and persist it (metadata + images) for offline use. */
 export async function saveAllHymnsToCache(
   onProgress?: (done: number, total: number) => void,
 ): Promise<{ saved: number; failed: number; total: number }> {
@@ -126,4 +126,8 @@ export async function saveAllHymnsToCache(
   }
 
   return { saved, failed, total: summaries.length };
+}
+
+export async function deleteAllHymnsFromCache(): Promise<number> {
+  return clearAllHymnCache();
 }
