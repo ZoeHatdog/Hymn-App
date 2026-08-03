@@ -15,6 +15,8 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { ThemeColors } from "@hymn-app/shared-themes";
 import { fontSizes, radii, spacing } from "@hymn-app/shared-themes";
 import { deleteAllHymnsFromCache, saveAllHymnsToCache } from "../api";
+import { formatBytes } from "../cache/disk";
+import type { SaveAllHymnsResult } from "../cache/types";
 import { ScreenContainer } from "../components/ScreenContainer";
 import { useThemedStyles } from "../hooks/useThemedStyles";
 import { useFavorites } from "../state/FavoritesContext";
@@ -49,6 +51,52 @@ export function SettingsScreen() {
     { icon: "information-circle-outline", label: "Version", value: "0.1.0" },
   ];
 
+  function alertSaveAllResult(result: SaveAllHymnsResult) {
+    const spaceHint =
+      result.estimateBytes !== undefined && result.freeBytes !== undefined
+        ? ` Estimated need ${formatBytes(result.estimateBytes)}; ${formatBytes(result.freeBytes)} free.`
+        : "";
+
+    if (result.abortedReason === "storage") {
+      if (result.saved === 0 && result.failed === 0) {
+        Alert.alert(
+          "Not enough storage",
+          `Download all was blocked to avoid filling the device.${spaceHint}`,
+        );
+        return;
+      }
+
+      Alert.alert(
+        "Storage full",
+        `Saved ${result.saved} of ${result.total} hymns, then stopped because the device is out of space.${spaceHint}`,
+      );
+      return;
+    }
+
+    if (result.failed === 0 && result.saved === 0 && result.skipped === result.total) {
+      Alert.alert(
+        "Already downloaded",
+        result.total === 0
+          ? "There are no hymns to save."
+          : "All hymns are already downloaded for offline use.",
+      );
+      return;
+    }
+
+    if (result.failed === 0) {
+      Alert.alert(
+        "Hymns saved",
+        `${result.saved} hymn${result.saved === 1 ? "" : "s"} saved for offline use.`,
+      );
+      return;
+    }
+
+    Alert.alert(
+      "Partially saved",
+      `Saved ${result.saved} of ${result.total} hymns. ${result.failed} failed (connection or server). Already-saved hymns remain available offline.`,
+    );
+  }
+
   async function handleSaveAllHymns() {
     if (busy) return;
 
@@ -59,18 +107,7 @@ export function SettingsScreen() {
       const result = await saveAllHymnsToCache((done, total) => {
         setCacheProgress(`${done} / ${total}`);
       });
-
-      if (result.failed === 0) {
-        Alert.alert(
-          "Hymns saved",
-          `${result.saved} hymn${result.saved === 1 ? "" : "s"} saved for offline use.`,
-        );
-      } else {
-        Alert.alert(
-          "Partially saved",
-          `Saved ${result.saved} of ${result.total} hymns. ${result.failed} failed.`,
-        );
-      }
+      alertSaveAllResult(result);
     } catch (err) {
       Alert.alert(
         "Could not save hymns",
