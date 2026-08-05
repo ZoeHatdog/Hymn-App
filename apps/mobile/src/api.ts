@@ -1,11 +1,17 @@
 import type { Hymn, HymnSummary } from "@hymn-app/shared-types";
+import { compareHymnsByLibraryAndPage } from "@hymn-app/shared-utils";
 import { getApiUrl } from "./config";
 import {
   clearAllHymnCache,
   clearIncompleteHymnDirs,
+  existingLocalImagePaths,
+  isHymnCacheComplete,
   isHymnCacheStale,
+  isHymnCached,
   readCachedHymnSummaries,
   readHymnFromCache,
+  readHymnSummaryIndex,
+  saveHymnSummaryIndex,
   saveHymnToCache,
 } from "./cache/hymnCache";
 import {
@@ -13,6 +19,7 @@ import {
   DISK_RECHECK_EVERY,
   estimateCacheBytes,
   getFreeDiskBytes,
+  SAFETY_BUFFER_BYTES,
 } from "./cache/disk";
 import { isCacheError, toCacheError } from "./cache/errors";
 import type { CachedHymnRecord, SaveAllHymnsResult } from "./cache/types";
@@ -70,11 +77,30 @@ function hymnFromCacheRecord(record: CachedHymnRecord): Hymn {
   };
 }
 
-export function getHymns(): Promise<HymnSummary[]> {
-  return fetchApi<HymnSummary[]>("/api/hymns");
+/** Offline fallback: prefer complete cache; otherwise lyrics + any surviving local pages. */
+function hymnFromCacheRecordOffline(record: CachedHymnRecord): Hymn {
+  if (isHymnCacheComplete(record)) {
+    return hymnFromCacheRecord(record);
+  }
+  return {
+    ...record.hymn,
+    imageUrls: existingLocalImagePaths(record),
+  };
 }
 
-/** Favorites list: network first, then cached hymns for the given ids. */
+export async function getHymns(): Promise<HymnSummary[]> {
+  try {
+    const list = await fetchApi<HymnSummary[]>("/api/hymns");
+    void saveHymnSummaryIndex(list);
+    return list;
+  } catch (err) {
+    const cached = await readHymnSummaryIndex();
+    if (cached && cached.length > 0) return cached;
+    throw err;
+  }
+}
+
+/** Favorites list: network first, then complete cached hymns for the given ids. */
 export async function getFavoriteHymnSummaries(
   favoriteIds: string[],
 ): Promise<HymnSummary[]> {
@@ -103,16 +129,34 @@ export async function getHymn(id: string): Promise<Hymn> {
   } catch (networkError) {
     const record = await readHymnFromCache(id);
     if (record) {
-      return hymnFromCacheRecord(record);
+      return hymnFromCacheRecordOffline(record);
     }
 
     throw networkError;
   }
 }
 
-export function searchHymns(query: string): Promise<HymnSummary[]> {
+export async function searchHymns(query: string): Promise<HymnSummary[]> {
   const encoded = encodeURIComponent(query);
-  return fetchApi<HymnSummary[]>(`/api/hymns/search?q=${encoded}`);
+
+  try {
+    return await fetchApi<HymnSummary[]>(`/api/hymns/search?q=${encoded}`);
+  } catch (err) {
+    const cached = await readHymnSummaryIndex();
+    if (!cached) throw err;
+
+    const q = query.trim().toLowerCase();
+    if (!q) return [];
+
+    return cached
+      .filter(
+        (hymn) =>
+          hymn.title.toLowerCase().includes(q) ||
+          hymn.author.toLowerCase().includes(q) ||
+          (hymn.library?.toLowerCase().includes(q) ?? false),
+      )
+      .sort(compareHymnsByLibraryAndPage);
+  }
 }
 
 export async function saveAllHymnsToCache(
@@ -126,42 +170,45 @@ export async function saveAllHymnsToCache(
   let failed = 0;
   let abortedReason: SaveAllHymnsResult["abortedReason"];
 
-  const estimateBytes = estimateCacheBytes(total);
+  let needCount = 0;
+  for (const summary of summaries) {
+    if (!(await isHymnCached(summary.id))) {
+      needCount += 1;
+    }
+  }
+
+  const estimateBytes = estimateCacheBytes(needCount);
   let freeBytes = await getFreeDiskBytes();
 
-  try {
-    assertEnoughDiskSpace(freeBytes, total);
-  } catch (err) {
-    if (isCacheError(err) && err.reason === "storage") {
-      return {
-        saved: 0,
-        skipped: 0,
-        failed: 0,
-        total,
-        abortedReason: "storage",
-        failedIds: [],
-        estimateBytes,
-        freeBytes,
-      };
+  if (needCount > 0) {
+    try {
+      assertEnoughDiskSpace(freeBytes, needCount);
+    } catch (err) {
+      if (isCacheError(err) && err.reason === "storage") {
+        return {
+          saved: 0,
+          skipped: 0,
+          failed: 0,
+          total,
+          abortedReason: "storage",
+          failedIds: [],
+          estimateBytes,
+          freeBytes,
+        };
+      }
+      throw err;
     }
-    throw err;
   }
 
   for (let i = 0; i < summaries.length; i++) {
     const id = summaries[i].id;
-    const remaining = total - i;
 
     if (i > 0 && i % DISK_RECHECK_EVERY === 0) {
       freeBytes = await getFreeDiskBytes();
-      try {
-        assertEnoughDiskSpace(freeBytes, remaining);
-      } catch (err) {
-        if (isCacheError(err) && err.reason === "storage") {
-          clearIncompleteHymnDirs(id);
-          abortedReason = "storage";
-          break;
-        }
-        throw err;
+      if (freeBytes < SAFETY_BUFFER_BYTES) {
+        clearIncompleteHymnDirs(id);
+        abortedReason = "storage";
+        break;
       }
     }
 
@@ -169,7 +216,11 @@ export async function saveAllHymnsToCache(
       const hymn = await fetchApi<Hymn>(`/api/hymns/${id}`);
       const existing = await readHymnFromCache(id);
 
-      if (existing && !isHymnCacheStale(existing, hymn)) {
+      if (
+        existing &&
+        !isHymnCacheStale(existing, hymn) &&
+        isHymnCacheComplete(existing)
+      ) {
         skipped++;
       } else {
         await saveHymnToCache(hymn);

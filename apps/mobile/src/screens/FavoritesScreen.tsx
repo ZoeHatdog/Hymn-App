@@ -32,10 +32,12 @@ export function FavoritesScreen() {
   const [favorites, setFavorites] = useState<HymnSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [warning, setWarning] = useState<string | null>(null);
 
   const loadFavorites = useCallback(async () => {
     setLoading(true);
     setError(null);
+    setWarning(null);
     try {
       const summaries = await getFavoriteHymnSummaries(favoriteIds);
       setFavorites(summaries);
@@ -43,6 +45,11 @@ export function FavoritesScreen() {
       if (favoriteIds.length > 0 && summaries.length === 0) {
         setError(
           "Favorites aren't available offline yet. Open them while online to cache.",
+        );
+      } else if (summaries.length > 0 && summaries.length < favoriteIds.length) {
+        const missing = favoriteIds.length - summaries.length;
+        setWarning(
+          `${missing} favorite${missing === 1 ? "" : "s"} aren't available offline yet. Open ${missing === 1 ? "it" : "them"} while online to cache.`,
         );
       }
     } catch (err) {
@@ -82,6 +89,13 @@ export function FavoritesScreen() {
           data={favorites}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.list}
+          ListHeaderComponent={
+            warning ? (
+              <View style={styles.warningBox}>
+                <Text style={styles.warningText}>{warning}</Text>
+              </View>
+            ) : null
+          }
           ListEmptyComponent={
             <View style={styles.empty}>
               <Ionicons
@@ -149,6 +163,16 @@ const createStyles = (colors: ThemeColors) =>
       borderRadius: 10,
     },
     errorText: {
+      color: colors.errorText,
+      fontSize: fontSizes.sm,
+    },
+    warningBox: {
+      padding: spacing.lg,
+      backgroundColor: colors.errorBackground,
+      borderRadius: 10,
+      marginBottom: spacing.md,
+    },
+    warningText: {
       color: colors.errorText,
       fontSize: fontSizes.sm,
     },

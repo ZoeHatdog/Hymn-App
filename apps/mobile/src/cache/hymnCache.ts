@@ -4,6 +4,9 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Directory, File, Paths } from "expo-file-system";
 import { CacheError, toCacheError } from "./errors";
 
+const LYRICS_FILENAME = "lyrics.txt";
+const SUMMARY_INDEX_KEY = "hymn-summaries";
+
 function hymnKey(id: string): string {
   return `hymn-${id}`;
 }
@@ -24,6 +27,10 @@ function oldDir(id: string): Directory {
   return new Directory(Paths.document, "hymns", `${id}.old`);
 }
 
+function lyricsFile(dir: Directory): File {
+  return new File(dir, LYRICS_FILENAME);
+}
+
 function ensureHymnsRoot(): void {
   const root = hymnsRoot();
   if (!root.exists) {
@@ -37,7 +44,6 @@ function deleteDirIfExists(dir: Directory): void {
   }
 }
 
-/** Remove leftover temp/old dirs for a hymn without touching a good final cache. */
 export function clearIncompleteHymnDirs(id: string): void {
   deleteDirIfExists(tempDir(id));
   deleteDirIfExists(oldDir(id));
@@ -49,6 +55,67 @@ function localPathsForDir(dir: Directory, pageCount: number): string[] {
     paths.push(new File(dir, `page-${i}.jpg`).uri);
   }
   return paths;
+}
+
+function fileExistsAtUri(uri: string): boolean {
+  try {
+    return new File(uri).exists;
+  } catch {
+    return false;
+  }
+}
+
+function writeLyricsToDir(dir: Directory, lyrics: string): void {
+  const file = lyricsFile(dir);
+  file.write(lyrics);
+  if (!file.exists) {
+    throw new CacheError("storage", "Failed to write hymn lyrics file.");
+  }
+}
+
+async function readLyricsFromDir(dir: Directory): Promise<string | null> {
+  const file = lyricsFile(dir);
+  if (!file.exists) return null;
+  try {
+    return await file.text();
+  } catch {
+    return null;
+  }
+}
+
+/** Strip lyrics so AsyncStorage only holds small metadata. */
+function toStoredRecord(record: CachedHymnRecord): CachedHymnRecord {
+  return {
+    ...record,
+    hymn: {
+      ...record.hymn,
+      lyrics: "",
+    },
+  };
+}
+
+/** True when metadata matches on-disk lyrics + images. */
+export function isHymnCacheComplete(record: CachedHymnRecord): boolean {
+  const dir = finalDir(record.hymn.id);
+  if (!dir.exists) return false;
+
+  const hasLyricsFile = lyricsFile(dir).exists;
+  const hasLegacyLyrics = record.hymn.lyrics.length > 0;
+  // New saves always write lyrics.txt (even when empty). Legacy caches may
+  // still keep lyrics inline in AsyncStorage without a file.
+  if (!hasLyricsFile && !hasLegacyLyrics) {
+    return false;
+  }
+
+  const expected = record.hymn.imageUrls.length;
+  if (expected === 0) return true;
+  if (record.localImagePaths.length !== expected) return false;
+  return record.localImagePaths.every(fileExistsAtUri);
+}
+
+/** Local image URIs that still exist on disk. */
+export function existingLocalImagePaths(record: CachedHymnRecord): string[] {
+  return record.localImagePaths.filter(fileExistsAtUri);
 }
 
 async function downloadHymnImagesToDir(
@@ -67,6 +134,12 @@ async function downloadHymnImagesToDir(
     if (!dest.exists) {
       await File.downloadFileAsync(url, dest, { idempotent: true });
     }
+    if (!dest.exists) {
+      throw new CacheError(
+        "unknown",
+        `Failed to download hymn image page ${i + 1}.`,
+      );
+    }
     localPaths.push(dest.uri);
   }
 
@@ -75,7 +148,7 @@ async function downloadHymnImagesToDir(
 
 /**
  * Promote temp download into the final hymn folder.
- * Keeps the previous final folder until the new one is in place.
+ * Leaves `id.old` in place until metadata is written successfully.
  */
 function promoteTempDir(id: string): Directory {
   const temp = tempDir(id);
@@ -107,14 +180,31 @@ function promoteTempDir(id: string): Directory {
     throw err;
   }
 
-  deleteDirIfExists(oldDir(id));
   return finalDir(id);
+}
+
+function restoreOldAfterFailedMetadata(id: string): void {
+  const final = finalDir(id);
+  const old = oldDir(id);
+  deleteDirIfExists(final);
+  if (old.exists) {
+    try {
+      old.rename(id);
+    } catch {
+      // Best-effort restore
+    }
+  }
+  deleteDirIfExists(tempDir(id));
 }
 
 export async function saveHymnToCache(hymn: Hymn): Promise<CachedHymnRecord> {
   const existing = await readHymnFromCache(hymn.id);
 
-  if (existing && !isHymnCacheStale(existing, hymn)) {
+  if (
+    existing &&
+    !isHymnCacheStale(existing, hymn) &&
+    isHymnCacheComplete(existing)
+  ) {
     return existing;
   }
 
@@ -122,16 +212,37 @@ export async function saveHymnToCache(hymn: Hymn): Promise<CachedHymnRecord> {
   clearIncompleteHymnDirs(hymn.id);
 
   const temp = tempDir(hymn.id);
+  let promoted = false;
 
   try {
-    // Lyrics-only hymns still get a temp folder so promote is consistent.
     if (!temp.exists) {
       temp.create({ intermediates: true, idempotent: true });
     }
 
-    await downloadHymnImagesToDir(hymn, temp);
-    const promoted = promoteTempDir(hymn.id);
-    const localImagePaths = localPathsForDir(promoted, hymn.imageUrls.length);
+    writeLyricsToDir(temp, hymn.lyrics);
+
+    const downloaded = await downloadHymnImagesToDir(hymn, temp);
+    if (downloaded.length !== hymn.imageUrls.length) {
+      throw new CacheError("unknown", "Incomplete hymn image download.");
+    }
+
+    const promotedDir = promoteTempDir(hymn.id);
+    promoted = true;
+    const localImagePaths = localPathsForDir(
+      promotedDir,
+      hymn.imageUrls.length,
+    );
+
+    if (
+      hymn.imageUrls.length > 0 &&
+      !localImagePaths.every(fileExistsAtUri)
+    ) {
+      throw new CacheError("unknown", "Hymn images missing after download.");
+    }
+
+    if (!lyricsFile(promotedDir).exists) {
+      throw new CacheError("unknown", "Hymn lyrics file missing after save.");
+    }
 
     const cachedHymn: CachedHymnRecord = {
       hymn,
@@ -140,18 +251,28 @@ export async function saveHymnToCache(hymn: Hymn): Promise<CachedHymnRecord> {
     };
 
     try {
-      await AsyncStorage.setItem(hymnKey(hymn.id), JSON.stringify(cachedHymn));
+      await AsyncStorage.setItem(
+        hymnKey(hymn.id),
+        JSON.stringify(toStoredRecord(cachedHymn)),
+      );
     } catch (err) {
       throw new CacheError(
         "storage",
-        err instanceof Error ? err.message : "Failed to write hymn cache metadata.",
+        err instanceof Error
+          ? err.message
+          : "Failed to write hymn cache metadata.",
         { cause: err },
       );
     }
 
+    deleteDirIfExists(oldDir(hymn.id));
     return cachedHymn;
   } catch (err) {
-    clearIncompleteHymnDirs(hymn.id);
+    if (promoted) {
+      restoreOldAfterFailedMetadata(hymn.id);
+    } else {
+      clearIncompleteHymnDirs(hymn.id);
+    }
     throw toCacheError(err);
   }
 }
@@ -162,7 +283,23 @@ export async function readHymnFromCache(
   try {
     const raw = await AsyncStorage.getItem(hymnKey(id));
     if (!raw) return null;
-    return JSON.parse(raw) as CachedHymnRecord;
+
+    const stored = JSON.parse(raw) as CachedHymnRecord;
+    const fromFile = await readLyricsFromDir(finalDir(id));
+    const lyrics =
+      fromFile !== null
+        ? fromFile
+        : typeof stored.hymn.lyrics === "string"
+          ? stored.hymn.lyrics
+          : "";
+
+    return {
+      ...stored,
+      hymn: {
+        ...stored.hymn,
+        lyrics,
+      },
+    };
   } catch {
     return null;
   }
@@ -175,19 +312,46 @@ export async function readCachedHymnSummaries(
 
   for (const id of ids) {
     const record = await readHymnFromCache(id);
-    if (!record) continue;
+    if (!record || !isHymnCacheComplete(record)) continue;
     summaries.push({
       id: record.hymn.id,
       title: record.hymn.title,
       author: record.hymn.author,
+      library: record.hymn.library,
+      page: record.hymn.page,
     });
   }
 
   return summaries;
 }
 
+/** Persist the browse/search catalog index (best-effort). */
+export async function saveHymnSummaryIndex(
+  summaries: HymnSummary[],
+): Promise<void> {
+  try {
+    await AsyncStorage.setItem(SUMMARY_INDEX_KEY, JSON.stringify(summaries));
+  } catch {
+    // Best-effort; browse can still work online
+  }
+}
+
+/** Read the cached catalog index for offline browse/search. */
+export async function readHymnSummaryIndex(): Promise<HymnSummary[] | null> {
+  try {
+    const raw = await AsyncStorage.getItem(SUMMARY_INDEX_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return null;
+    return parsed as HymnSummary[];
+  } catch {
+    return null;
+  }
+}
+
 export async function isHymnCached(id: string): Promise<boolean> {
-  return (await readHymnFromCache(id)) !== null;
+  const record = await readHymnFromCache(id);
+  return record !== null && isHymnCacheComplete(record);
 }
 
 export async function clearHymnCache(id: string): Promise<void> {
@@ -199,10 +363,17 @@ export async function clearHymnCache(id: string): Promise<void> {
 /** Remove all cached hymn metadata and downloaded images. */
 export async function clearAllHymnCache(): Promise<number> {
   const keys = await AsyncStorage.getAllKeys();
-  const hymnKeys = keys.filter((key) => key.startsWith("hymn-"));
+  const hymnKeys = keys.filter(
+    (key) => key.startsWith("hymn-") && key !== SUMMARY_INDEX_KEY,
+  );
 
-  if (hymnKeys.length > 0) {
-    await AsyncStorage.multiRemove(hymnKeys);
+  const keysToRemove = [...hymnKeys];
+  if (keys.includes(SUMMARY_INDEX_KEY)) {
+    keysToRemove.push(SUMMARY_INDEX_KEY);
+  }
+
+  if (keysToRemove.length > 0) {
+    await AsyncStorage.multiRemove(keysToRemove);
   }
 
   deleteDirIfExists(hymnsRoot());

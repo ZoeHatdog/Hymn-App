@@ -6,6 +6,7 @@ export interface Hymn {
   imageUrls: string[];
   tags: string[];
   library: string | null;
+  page: number | null;
   link: string | null;
   createdAt: string;
   updatedAt: string;
@@ -15,6 +16,8 @@ export interface HymnSummary {
   id: string;
   title: string;
   author: string;
+  library: string | null;
+  page: number | null;
 }
 
 export interface ApiResponse<T> {

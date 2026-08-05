@@ -9,6 +9,7 @@ import {
 } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getHymn } from "../api";
+import { isHymnCached } from "../cache/hymnCache";
 
 const FAVORITES_STORAGE_KEY = "favorite-ids";
 
@@ -72,8 +73,11 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
         current.includes(hymnId) ? current : [...current, hymnId],
       );
 
-      // Best-effort: fetch + cache so the hymn works offline
-      void getHymn(hymnId).catch(() => {});
+      // Best-effort cache for offline; skip network if already complete on disk
+      void (async () => {
+        if (await isHymnCached(hymnId)) return;
+        await getHymn(hymnId);
+      })().catch(() => {});
     },
     [favoriteIds],
   );

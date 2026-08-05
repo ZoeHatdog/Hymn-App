@@ -15,7 +15,9 @@ export async function getFreeDiskBytes(): Promise<number> {
 }
 
 export function estimateCacheBytes(hymnCount: number): number {
-  return Math.max(0, hymnCount) * AVG_BYTES_PER_HYMN + SAFETY_BUFFER_BYTES;
+  const count = Math.max(0, hymnCount);
+  if (count === 0) return 0;
+  return count * AVG_BYTES_PER_HYMN + SAFETY_BUFFER_BYTES;
 }
 
 export function hasEnoughDiskSpace(

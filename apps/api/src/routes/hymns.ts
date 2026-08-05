@@ -1,17 +1,24 @@
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import type { Hymn, HymnSummary } from "@hymn-app/shared-types";
-import { sanitizeSearchQuery } from "@hymn-app/shared-utils";
+import {
+  compareHymnsByLibraryAndPage,
+  sanitizeSearchQuery,
+} from "@hymn-app/shared-utils";
 import { prisma } from "../db.js";
 
 function toHymnSummary(hymn: {
   id: string;
   title: string;
   author: string;
+  library: string | null;
+  page: number | null;
 }): HymnSummary {
   return {
     id: hymn.id,
     title: hymn.title,
     author: hymn.author,
+    library: hymn.library,
+    page: hymn.page,
   };
 }
 
@@ -45,6 +52,7 @@ function toHymn(
     imagePaths: string[];
     tags: string[];
     library: string | null;
+    page: number | null;
     link: string | null;
     createdAt: Date;
     updatedAt: Date;
@@ -58,18 +66,28 @@ function toHymn(
     imageUrls: buildImageUrls(request, hymn.imagePaths),
     tags: hymn.tags,
     library: hymn.library,
+    page: hymn.page,
     link: hymn.link,
     createdAt: hymn.createdAt.toISOString(),
     updatedAt: hymn.updatedAt.toISOString(),
   };
 }
 
+const summarySelect = {
+  id: true,
+  title: true,
+  author: true,
+  library: true,
+  page: true,
+} as const;
+
 export async function hymnRoutes(app: FastifyInstance) {
   app.get("/hymns", async () => {
     const hymns = await prisma.hymn.findMany({
-      orderBy: { title: "asc" },
-      select: { id: true, title: true, author: true },
+      select: summarySelect,
     });
+
+    hymns.sort(compareHymnsByLibraryAndPage);
 
     return {
       success: true,
@@ -96,9 +114,10 @@ export async function hymnRoutes(app: FastifyInstance) {
           { tagsSearch: { contains: tagQuery } },
         ],
       },
-      orderBy: { title: "asc" },
-      select: { id: true, title: true, author: true },
+      select: summarySelect,
     });
+
+    hymns.sort(compareHymnsByLibraryAndPage);
 
     return {
       success: true,

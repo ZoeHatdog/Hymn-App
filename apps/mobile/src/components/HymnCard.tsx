@@ -22,6 +22,11 @@ export function HymnCard({
   const { colors } = useTheme();
   const styles = useThemedStyles(createStyles);
 
+  const metaParts: string[] = [];
+  if (hymn.library) metaParts.push(hymn.library);
+  if (hymn.page != null) metaParts.push(`#${hymn.page}`);
+  const meta = metaParts.join(" · ");
+
   return (
     <Pressable
       style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
@@ -31,21 +36,24 @@ export function HymnCard({
         <Text style={styles.title}>{hymn.title}</Text>
         <Text style={styles.author}>{hymn.author}</Text>
       </View>
-      <Pressable
-        hitSlop={10}
-        onPress={onToggleFavorite}
-        accessibilityRole="button"
-        accessibilityLabel={
-          isFavorite ? "Remove from favorites" : "Add to favorites"
-        }
-        style={styles.starButton}
-      >
-        <Ionicons
-          name={isFavorite ? "star" : "star-outline"}
-          size={22}
-          color={isFavorite ? colors.accent : colors.textSecondary}
-        />
-      </Pressable>
+      <View style={styles.actions}>
+        {meta ? <Text style={styles.meta}>{meta}</Text> : null}
+        <Pressable
+          hitSlop={10}
+          onPress={onToggleFavorite}
+          accessibilityRole="button"
+          accessibilityLabel={
+            isFavorite ? "Remove from favorites" : "Add to favorites"
+          }
+          style={styles.starButton}
+        >
+          <Ionicons
+            name={isFavorite ? "star" : "star-outline"}
+            size={22}
+            color={isFavorite ? colors.accent : colors.textSecondary}
+          />
+        </Pressable>
+      </View>
     </Pressable>
   );
 }
@@ -64,6 +72,7 @@ const createStyles = (colors: ThemeColors) =>
     },
     text: {
       flex: 1,
+      paddingRight: spacing.md,
     },
     title: {
       fontSize: fontSizes.lg,
@@ -75,7 +84,18 @@ const createStyles = (colors: ThemeColors) =>
       color: colors.accent,
       marginTop: spacing.xs,
     },
+    actions: {
+      alignItems: "center",
+      justifyContent: "center",
+      gap: spacing.xs,
+    },
+    meta: {
+      fontSize: fontSizes.sm,
+      fontWeight: "600",
+      color: colors.textSecondary,
+      textAlign: "center",
+    },
     starButton: {
-      paddingLeft: spacing.md,
+      paddingTop: 2,
     },
   });

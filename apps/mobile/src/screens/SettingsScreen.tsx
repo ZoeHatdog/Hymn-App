@@ -58,7 +58,7 @@ export function SettingsScreen() {
         : "";
 
     if (result.abortedReason === "storage") {
-      if (result.saved === 0 && result.failed === 0) {
+      if (result.saved === 0 && result.skipped === 0 && result.failed === 0) {
         Alert.alert(
           "Not enough storage",
           `Download all was blocked to avoid filling the device.${spaceHint}`,

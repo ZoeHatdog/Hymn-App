@@ -69,7 +69,7 @@ async function main() {
 
   for (const file of files) {
     const content = readFileSync(join(hymnsDir, file), "utf-8");
-    const { title, author, lyrics, imageFolder, imageFile, tags, library, link } =
+    const { title, author, lyrics, imageFolder, imageFile, tags, library, page, link } =
       parseHymnFile(content);
     const stem = basename(file, extname(file));
     const imagePaths = resolveImagePaths(stem, imageFolder, imageFile);
@@ -77,7 +77,7 @@ async function main() {
 
     await prisma.hymn.upsert({
       where: { title },
-      update: { author, lyrics, imagePaths, tags, tagsSearch, library, link },
+      update: { author, lyrics, imagePaths, tags, tagsSearch, library, page, link },
       create: {
         title,
         author,
@@ -86,6 +86,7 @@ async function main() {
         tags,
         tagsSearch,
         library,
+        page,
         link,
       },
     });

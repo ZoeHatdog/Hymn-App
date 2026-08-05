@@ -75,7 +75,7 @@ export function ContentsScreen() {
           ListEmptyComponent={
             <Text style={styles.emptyText}>No hymns found.</Text>
           }
-          renderItem={({ item, index }) => (
+          renderItem={({ item }) => (
             <Pressable
               style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
               onPress={() =>
@@ -83,14 +83,18 @@ export function ContentsScreen() {
               }
             >
               <View style={styles.number}>
-                <Text style={styles.numberText}>{index + 1}</Text>
+                <Text style={styles.numberText}>
+                  {item.page != null ? String(item.page) : "—"}
+                </Text>
               </View>
               <View style={styles.rowText}>
                 <Text style={styles.rowTitle} numberOfLines={1}>
                   {item.title}
                 </Text>
                 <Text style={styles.rowAuthor} numberOfLines={1}>
-                  {item.author}
+                  {item.library
+                    ? `${item.library} · ${item.author}`
+                    : item.author}
                 </Text>
               </View>
             </Pressable>
