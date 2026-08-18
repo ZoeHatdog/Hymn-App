@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -12,6 +12,7 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { HymnSummary } from "@hymn-app/shared-types";
 import type { ThemeColors } from "@hymn-app/shared-themes";
 import { fontSizes, radii, spacing } from "@hymn-app/shared-themes";
+import { compareHymnsByLibraryAndPage } from "@hymn-app/shared-utils";
 import { getHymns } from "../api";
 import { ScreenContainer } from "../components/ScreenContainer";
 import { useThemedStyles } from "../hooks/useThemedStyles";
@@ -19,6 +20,25 @@ import { useTheme } from "../state/ThemeContext";
 import type { RootStackParamList } from "../navigation/types";
 
 type Navigation = NativeStackNavigationProp<RootStackParamList>;
+type SortMode = "number" | "title" | "author";
+
+const SORT_OPTIONS: { id: SortMode; label: string }[] = [
+  { id: "number", label: "Number" },
+  { id: "title", label: "A–Z" },
+  { id: "author", label: "Author" },
+];
+
+function compareByTitle(a: HymnSummary, b: HymnSummary) {
+  return a.title.localeCompare(b.title, undefined, { sensitivity: "base" });
+}
+
+function compareByAuthor(a: HymnSummary, b: HymnSummary) {
+  const authorCmp = a.author.localeCompare(b.author, undefined, {
+    sensitivity: "base",
+  });
+  if (authorCmp !== 0) return authorCmp;
+  return compareByTitle(a, b);
+}
 
 export function ContentsScreen() {
   const navigation = useNavigation<Navigation>();
@@ -26,8 +46,17 @@ export function ContentsScreen() {
   const styles = useThemedStyles(createStyles);
 
   const [hymns, setHymns] = useState<HymnSummary[]>([]);
+  const [sortMode, setSortMode] = useState<SortMode>("number");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const sortedHymns = useMemo(() => {
+    const list = [...hymns];
+    if (sortMode === "title") list.sort(compareByTitle);
+    else if (sortMode === "author") list.sort(compareByAuthor);
+    else list.sort(compareHymnsByLibraryAndPage);
+    return list;
+  }, [hymns, sortMode]);
 
   const loadHymns = useCallback(async () => {
     setLoading(true);
@@ -67,8 +96,32 @@ export function ContentsScreen() {
       )}
 
       {!loading && !error && (
+        <View style={styles.sortRow}>
+          {SORT_OPTIONS.map((option) => {
+            const selected = option.id === sortMode;
+            return (
+              <Pressable
+                key={option.id}
+                onPress={() => setSortMode(option.id)}
+                style={[styles.sortChip, selected && styles.sortChipSelected]}
+              >
+                <Text
+                  style={[
+                    styles.sortChipText,
+                    selected && styles.sortChipTextSelected,
+                  ]}
+                >
+                  {option.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      )}
+
+      {!loading && !error && (
         <FlatList
-          data={hymns}
+          data={sortedHymns}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.list}
           ItemSeparatorComponent={() => <View style={styles.separator} />}
@@ -107,6 +160,29 @@ export function ContentsScreen() {
 
 const createStyles = (colors: ThemeColors) =>
   StyleSheet.create({
+    sortRow: {
+      flexDirection: "row",
+      gap: spacing.sm,
+      paddingHorizontal: spacing.xl,
+      paddingBottom: spacing.md,
+    },
+    sortChip: {
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm,
+      borderRadius: radii.pill,
+      backgroundColor: colors.surface,
+    },
+    sortChipSelected: {
+      backgroundColor: colors.accent,
+    },
+    sortChipText: {
+      fontSize: fontSizes.sm,
+      fontWeight: "600",
+      color: colors.textSecondary,
+    },
+    sortChipTextSelected: {
+      color: colors.onAccent,
+    },
     list: {
       paddingHorizontal: spacing.xl,
       paddingBottom: spacing.xl,
