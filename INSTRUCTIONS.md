@@ -52,7 +52,10 @@ DATABASE_URL="postgresql://postgres:YOUR_PASSWORD@localhost:5432/hymn_app?schema
 API_PORT=3000
 API_HOST=0.0.0.0
 EXPO_PUBLIC_API_URL=http://localhost:3000
+ASSET_BASE_URL=https://your-bucket.s3.ap-southeast-2.amazonaws.com
 ```
+
+`ASSET_BASE_URL` is optional. When set, sheet `imageUrls` are `{ASSET_BASE_URL}/TBC/...` (or `Rejoice/...`) instead of `/api/assets/hymns/...`. Omit it to keep serving local files.
 
 > **Physical device testing:** Replace `localhost` in `EXPO_PUBLIC_API_URL` with your computer's local IP (e.g. `http://192.168.1.10:3000`).
 
@@ -72,16 +75,35 @@ npm run db:setup
 
 ### Seed hymns from text files
 
-Hymns live in `data/hymns/` as `.txt` files. Each file uses this format:
+Hymns live under `data/hymns/<library>/`. Each library is a folder (`Rejoice`, `TBC`, …). A hymn is either a `.txt` file in that library folder, or a folder containing lyrics plus optional sheet images:
+
+```
+data/hymns/
+  Rejoice/
+    amazing-grace.txt
+    how-great-thou-art.txt
+  TBC/
+    His Mercy Is More - TBC 16/
+      His Mercy Is More - TBC 16.txt
+      His Mercy Is More - TBC 16.webp
+```
+
+Each `.txt` file uses this format:
 
 ```
 title: Amazing Grace
 author: John Newton
+library: Rejoice
+page: 1
+tags: Grace, Salvation
+link: https://example.com
 
 First line of lyrics
 Second line of lyrics
 ...
 ```
+
+`library` and `page` are optional. If omitted, seed infers the library from the parent folder (`Rejoice`, `TBC`) and the page from a trailing number in the hymn folder name (`… - TBC 16` → `16`).
 
 Re-run seeding anytime:
 
@@ -91,26 +113,17 @@ npm run db:seed
 
 ### Sheet music images (optional)
 
-Hymns can have **one or multiple** sheet music pages.
+Sheet music lives **next to** the hymn text. You do not need `image_file:` or `image_folder:` pointers.
 
-**Multi-page (recommended):** add an `image_folder:` line to the hymn `.txt` file. All images in that folder (sorted by filename) become pages:
+**Per-hymn folder (TBC and any hymn with sheets):** put `.webp`, `.jpg`, `.jpeg`, or `.png` files in the same folder as the `.txt`. All images in that folder are used as pages, sorted by filename. An optional `sheets/` subfolder is also scanned.
 
 ```
-title: Praise, My Soul, The King of Heaven
-author: Henry Francis Lyte (lyrics), John Goss (music)
-image_folder: TBC - Hymns/Medium File
-
-Praise, my soul, the King of heaven;
-...
+data/hymns/TBC/His Mercy Is More - TBC 16/
+  His Mercy Is More - TBC 16.txt
+  His Mercy Is More - TBC 16.webp
 ```
 
-The folder path is relative to `data/hymns/images/`. To test a different size tier, change the folder name and re-seed.
-
-**Single page:** omit `image_folder` and place a flat file matching the text basename:
-
-| Text file | Image file |
-|-----------|------------|
-| `data/hymns/amazing-grace.txt` | `data/hymns/images/amazing-grace.jpg` |
+**Lyrics-only in a library folder (Rejoice):** leave the `.txt` in `data/hymns/Rejoice/`. To add a single image later, either place a matching-stem file beside it (`amazing-grace.webp`) or move the hymn into its own folder and drop images there.
 
 After adding or updating images:
 
@@ -140,7 +153,7 @@ API runs at `http://localhost:3000`
 | GET | `/api/hymns` | List all hymns |
 | GET | `/api/hymns/:id` | Get hymn with full lyrics and `imageUrls[]` |
 | GET | `/api/hymns/search?q=grace` | Search by title, author, or lyrics |
-| GET | `/api/assets/hymns/:filename` | Serve sheet music image files |
+| GET | `/api/assets/hymns/*` | Serve sheet music image files (path relative to `data/hymns/`) |
 
 ### Start the Mobile App (Terminal 2)
 
@@ -171,9 +184,9 @@ npm run mobile
 - PostgreSQL persistence via Prisma ORM
 
 ### Data Pipeline
-- Hymns authored as plain text files in `data/hymns/`
-- Optional sheet music images in `data/hymns/images/` (paired by basename)
-- Seed script parses text files, links images, and upserts into the database
+- Hymns authored under `data/hymns/<library>/`, as a `.txt` file or a per-hymn folder
+- Optional sheet music images sit beside the `.txt` (or in a `sheets/` subfolder)
+- Seed script walks those folders, infers library/page when needed, and upserts into the database
 - Shared types keep API and mobile in sync
 
 ### Included Sample Hymns
@@ -184,25 +197,39 @@ npm run mobile
 
 ## Adding a New Hymn
 
-1. Create a new `.txt` file in `data/hymns/`:
+**Lyrics only** — add a `.txt` file in the library folder:
+
+```
+data/hymns/Rejoice/be-thou-my-vision.txt
+```
+
+**Lyrics + sheet music** — add a folder named after the hymn:
+
+```
+data/hymns/TBC/Be Thou My Vision - TBC 40/
+  Be Thou My Vision - TBC 40.txt
+  Be Thou My Vision - TBC 40.webp
+```
+
+Example `.txt`:
 
 ```
 title: Be Thou My Vision
 author: Traditional Irish
+library: TBC
+page: 40
 
 Be Thou my Vision, O Lord of my heart
 ...
 ```
 
-2. Run the seed script:
+Then run:
 
 ```bash
 npm run db:seed
 ```
 
-3. (Optional) Add sheet music via `image_folder:` in the `.txt` file or a flat image in `data/hymns/images/`, then re-run `npm run db:seed`.
-
-4. Restart or refresh the mobile app to see the new hymn.
+Restart or refresh the mobile app to see the new hymn.
 
 ---
 

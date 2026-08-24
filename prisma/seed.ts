@@ -1,93 +1,152 @@
 import { PrismaClient } from "@prisma/client";
-import { existsSync, readFileSync, readdirSync } from "node:fs";
-import { basename, extname, join, relative } from "node:path";
-import { buildTagsSearchText, parseHymnFile } from "@hymn-app/shared-utils";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { basename, dirname, extname, join, relative } from "node:path";
+import {
+  buildTagsSearchText,
+  inferPageFromFolderName,
+  isHymnImageFile,
+  parseHymnFile,
+} from "@hymn-app/shared-utils";
 
 const prisma = new PrismaClient();
 const hymnsDir = join(process.cwd(), "data", "hymns");
-const imagesDir = join(hymnsDir, "images");
-const IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png"];
+const SKIP_DIR_NAMES = new Set(["images", "sheets"]);
 
-function isImageFile(filename: string): boolean {
-  const lower = filename.toLowerCase();
-  return IMAGE_EXTENSIONS.some((ext) => lower.endsWith(ext));
+function toPosixPath(filePath: string): string {
+  return filePath.split("\\").join("/");
 }
 
-function toRelativeImagePath(absolutePath: string): string {
-  return relative(imagesDir, absolutePath).split("\\").join("/");
+function toRelativeHymnPath(absolutePath: string): string {
+  return toPosixPath(relative(hymnsDir, absolutePath));
 }
 
-function findImagePathsFromFolder(folder: string): string[] {
-  const folderPath = join(imagesDir, folder);
-  if (!existsSync(folderPath)) {
-    console.warn(`  Warning: image folder not found: ${folder}`);
+function collectHymnTextFiles(dir: string): string[] {
+  if (!existsSync(dir)) {
     return [];
   }
 
-  return readdirSync(folderPath)
-    .filter(isImageFile)
-    .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
-    .map((filename) => toRelativeImagePath(join(folderPath, filename)));
-}
+  const results: string[] = [];
 
-function findFlatImagePath(stem: string): string[] {
-  for (const ext of IMAGE_EXTENSIONS) {
-    const filename = `${stem}${ext}`;
-    const absolutePath = join(imagesDir, filename);
-    if (existsSync(absolutePath)) {
-      return [toRelativeImagePath(absolutePath)];
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const fullPath = join(dir, entry.name);
+
+    if (entry.isDirectory()) {
+      if (SKIP_DIR_NAMES.has(entry.name.toLowerCase())) {
+        continue;
+      }
+      results.push(...collectHymnTextFiles(fullPath));
+      continue;
+    }
+
+    if (entry.isFile() && entry.name.toLowerCase().endsWith(".txt")) {
+      results.push(fullPath);
     }
   }
-  return [];
+
+  return results.sort((a, b) =>
+    toRelativeHymnPath(a).localeCompare(toRelativeHymnPath(b), undefined, {
+      numeric: true,
+      sensitivity: "base",
+    }),
+  );
 }
 
-function findImagePathFromFile(relativeFile: string): string[] {
-  const absolutePath = join(imagesDir, relativeFile);
-  if (!existsSync(absolutePath)) {
-    console.warn(`  Warning: image file not found: ${relativeFile}`);
+/** 0 = hymns root, 1 = library folder, 2+ = per-hymn folder. */
+function depthFromHymnsRoot(dir: string): number {
+  const relativeDir = toRelativeHymnPath(dir);
+  if (!relativeDir || relativeDir === ".") {
+    return 0;
+  }
+  return relativeDir.split("/").filter(Boolean).length;
+}
+
+function libraryFromPath(txtAbsolutePath: string): string | null {
+  const relativePath = toRelativeHymnPath(txtAbsolutePath);
+  const [libraryFolder] = relativePath.split("/");
+  if (!libraryFolder || relativePath === libraryFolder) {
+    return null;
+  }
+  return libraryFolder;
+}
+
+function listImagesInDir(dir: string): string[] {
+  if (!existsSync(dir)) {
     return [];
   }
-  return [toRelativeImagePath(absolutePath)];
+
+  return readdirSync(dir)
+    .filter(isHymnImageFile)
+    .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
+    .map((filename) => join(dir, filename));
 }
 
-function resolveImagePaths(
-  stem: string,
-  imageFolder: string | null,
-  imageFile: string | null,
-): string[] {
-  if (imageFile) {
-    return findImagePathFromFile(imageFile);
+/**
+ * Lyrics-only files live directly in a library folder; match images by stem.
+ * Per-hymn folders take every image beside the .txt, plus optional `sheets/`.
+ */
+function findCoLocatedImages(txtAbsolutePath: string): string[] {
+  const dir = dirname(txtAbsolutePath);
+  const stem = basename(txtAbsolutePath, extname(txtAbsolutePath));
+  const inSameFolder = listImagesInDir(dir);
+
+  if (depthFromHymnsRoot(dir) <= 1) {
+    return inSameFolder
+      .filter((filePath) => basename(filePath, extname(filePath)) === stem)
+      .map(toRelativeHymnPath);
   }
-  if (imageFolder) {
-    return findImagePathsFromFolder(imageFolder);
-  }
-  return findFlatImagePath(stem);
+
+  const inSheets = listImagesInDir(join(dir, "sheets"));
+  return [...inSameFolder, ...inSheets]
+    .sort((a, b) =>
+      basename(a).localeCompare(basename(b), undefined, { numeric: true }),
+    )
+    .map(toRelativeHymnPath);
 }
 
 async function main() {
-  const files = readdirSync(hymnsDir).filter((file) => file.endsWith(".txt"));
+  const files = collectHymnTextFiles(hymnsDir);
+
+  if (files.length === 0) {
+    console.warn(`No hymn .txt files found under ${hymnsDir}`);
+    return;
+  }
 
   for (const file of files) {
-    const content = readFileSync(join(hymnsDir, file), "utf-8");
-    const { title, author, lyrics, imageFolder, imageFile, tags, library, page, link } =
-      parseHymnFile(content);
-    const stem = basename(file, extname(file));
-    const imagePaths = resolveImagePaths(stem, imageFolder, imageFile);
-    const tagsSearch = buildTagsSearchText(tags);
+    const content = readFileSync(file, "utf-8");
+    const parsed = parseHymnFile(content);
+    const imagePaths = findCoLocatedImages(file);
+    const library = parsed.library ?? libraryFromPath(file);
+    const hymnDir = dirname(file);
+    const page =
+      parsed.page ??
+      (depthFromHymnsRoot(hymnDir) >= 2
+        ? inferPageFromFolderName(basename(hymnDir))
+        : null);
+    const tagsSearch = buildTagsSearchText(parsed.tags);
+    const relativeFile = toRelativeHymnPath(file);
 
     await prisma.hymn.upsert({
-      where: { title },
-      update: { author, lyrics, imagePaths, tags, tagsSearch, library, page, link },
-      create: {
-        title,
-        author,
-        lyrics,
+      where: { title: parsed.title },
+      update: {
+        author: parsed.author,
+        lyrics: parsed.lyrics,
         imagePaths,
-        tags,
+        tags: parsed.tags,
         tagsSearch,
         library,
         page,
-        link,
+        link: parsed.link,
+      },
+      create: {
+        title: parsed.title,
+        author: parsed.author,
+        lyrics: parsed.lyrics,
+        imagePaths,
+        tags: parsed.tags,
+        tagsSearch,
+        library,
+        page,
+        link: parsed.link,
       },
     });
 
@@ -95,7 +154,8 @@ async function main() {
       imagePaths.length > 0
         ? ` (${imagePaths.length} page${imagePaths.length === 1 ? "" : "s"})`
         : " (no images)";
-    console.log(`Seeded: ${title}${imageNote}`);
+    console.log(`Seeded: ${parsed.title}${imageNote}`);
+    console.log(`  source: ${relativeFile}`);
     for (const path of imagePaths) {
       console.log(`  - ${path}`);
     }

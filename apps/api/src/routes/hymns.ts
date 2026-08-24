@@ -22,16 +22,38 @@ function toHymnSummary(hymn: {
   };
 }
 
+function encodeImagePath(imagePath: string): string {
+  return imagePath
+    .split("/")
+    .filter((segment) => segment.length > 0)
+    .map((segment) => encodeURIComponent(segment))
+    .join("/");
+}
+
+
+function assetBaseUrl(): string | null {
+  const raw = process.env.ASSET_BASE_URL?.trim();
+  if (!raw) {
+    return null;
+  }
+  return raw.replace(/\/+$/, "");
+}
+
 function buildImageUrl(request: FastifyRequest, imagePath: string): string | null {
+  const encodedPath = encodeImagePath(imagePath);
+  if (!encodedPath) {
+    return null;
+  }
+
+  const base = assetBaseUrl();
+  if (base) {
+    return `${base}/${encodedPath}`;
+  }
+
   const host = request.headers.host;
   if (!host) {
     return null;
   }
-
-  const encodedPath = imagePath
-    .split("/")
-    .map((segment) => encodeURIComponent(segment))
-    .join("/");
 
   return `${request.protocol}://${host}/api/assets/hymns/${encodedPath}`;
 }

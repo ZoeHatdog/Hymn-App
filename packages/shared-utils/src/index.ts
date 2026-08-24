@@ -1,13 +1,37 @@
+export const HYMN_IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp"] as const;
+
 export interface ParsedHymnFile {
   title: string;
   author: string;
+  /** @deprecated Images are resolved from the hymn folder; kept so old files still parse. */
   imageFolder: string | null;
+  /** @deprecated Images are resolved from the hymn folder; kept so old files still parse. */
   imageFile: string | null;
   tags: string[];
   library: string | null;
   page: number | null;
   link: string | null;
   lyrics: string;
+}
+
+/** True when `filename` is a sheet-music image the seed/API should pick up. */
+export function isHymnImageFile(filename: string): boolean {
+  const lower = filename.toLowerCase();
+  return HYMN_IMAGE_EXTENSIONS.some((ext) => lower.endsWith(ext));
+}
+
+/**
+ * Reads a trailing page number from a hymn folder name such as
+ * `His Mercy Is More - TBC 16`.
+ */
+export function inferPageFromFolderName(folderName: string): number | null {
+  const match = folderName.trim().match(/(\d+)\s*$/);
+  if (!match) {
+    return null;
+  }
+
+  const parsed = Number.parseInt(match[1], 10);
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
 /** Preferred library order for catalog sorting; unknown libraries follow these. */
