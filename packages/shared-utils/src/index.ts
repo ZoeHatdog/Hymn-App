@@ -37,6 +37,62 @@ export function inferPageFromFolderName(folderName: string): number | null {
 /** Preferred library order for catalog sorting; unknown libraries follow these. */
 const LIBRARY_SORT_ORDER = ["rejoice", "tbc"];
 
+const LIBRARY_DISPLAY_NAMES: Record<string, string> = {
+  rejoice: "Rejoice",
+  tbc: "TBC",
+};
+
+export interface LibraryHymnGroup<T> {
+  library: string | null;
+  label: string;
+  data: T[];
+}
+
+/** Display name for a library folder (`tbc` → `TBC`, unknown names kept as stored). */
+export function formatLibraryLabel(library: string | null): string {
+  if (!library || !library.trim()) {
+    return "Other hymns";
+  }
+
+  const trimmed = library.trim();
+  return LIBRARY_DISPLAY_NAMES[trimmed.toLowerCase()] ?? trimmed;
+}
+
+/** Groups hymns by library, ordered Rejoice → TBC → other named libraries → none. */
+export function groupHymnsByLibrary<T extends { library: string | null }>(
+  hymns: T[],
+): LibraryHymnGroup<T>[] {
+  const buckets = new Map<string, T[]>();
+
+  for (const hymn of hymns) {
+    const key = hymn.library?.trim().toLowerCase() ?? "";
+    const existing = buckets.get(key);
+    if (existing) {
+      existing.push(hymn);
+    } else {
+      buckets.set(key, [hymn]);
+    }
+  }
+
+  return [...buckets.entries()]
+    .map(([key, data]) => {
+      const library = key === "" ? null : (data[0]?.library ?? key);
+      return {
+        library,
+        label: formatLibraryLabel(library),
+        data,
+      };
+    })
+    .sort((a, b) => {
+      const rankA = librarySortKey(a.library);
+      const rankB = librarySortKey(b.library);
+      if (rankA !== rankB) {
+        return rankA - rankB;
+      }
+      return a.label.localeCompare(b.label, undefined, { sensitivity: "base" });
+    });
+}
+
 export interface HymnSortFields {
   title: string;
   library: string | null;
