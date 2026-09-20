@@ -326,6 +326,10 @@ export function HymnImageDetailScreen() {
               ),
             )
           )}
+          <Text style={styles.licenseFooter}>
+            All sheet music images are owned by TBC and licensed for TBC worship
+            use only.
+          </Text>
         </ScrollView>
       )}
 
@@ -421,9 +425,20 @@ const createStyles = (colors: ThemeColors) =>
       marginTop: spacing.xs,
     },
     imageContainer: {
-      paddingBottom: 48,
+      paddingBottom: spacing.xxl,
       paddingTop: spacing.sm,
       alignItems: "center",
+    },
+    licenseFooter: {
+      marginTop: spacing.md,
+      paddingTop: spacing.lg,
+      paddingHorizontal: spacing.md,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: colors.border,
+      color: colors.textSecondary,
+      fontSize: fontSizes.xs,
+      lineHeight: 18,
+      textAlign: "center",
     },
     pageBlock: {
       width: "100%",
