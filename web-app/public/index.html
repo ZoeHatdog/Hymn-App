@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Hymn desk</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preconnect" href="https://api.fontshare.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;1,6..72,400&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://api.fontshare.com/v2/css?f[]=sentient@400,700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="nav-edge">
+      <a class="wordmark" href="/">Hymn desk</a>
+      <a class="nav-cta" href="#library">Library →</a>
+    </header>
+
+    <main class="studio">
+      <section class="composer reveal" style="--i: 0" aria-labelledby="add-heading">
+        <h1 id="add-heading">Add a hymn.</h1>
+        <p class="lede" id="status" role="status">Checking the hymn API…</p>
+        <form id="hymn-form" novalidate>
+          <label>
+            Title
+            <span class="field">
+              <input
+                id="title"
+                name="title"
+                type="text"
+                required
+                aria-required="true"
+                aria-describedby="title-help"
+                autocomplete="off"
+                data-error="The title is empty. A hymn is filed under its title. Type the title."
+              />
+              <span class="mark" aria-hidden="true"></span>
+            </span>
+            <span class="helper" id="title-help"></span>
+          </label>
+          <label>
+            Author
+            <span class="field">
+              <input
+                id="author"
+                name="author"
+                type="text"
+                required
+                aria-required="true"
+                aria-describedby="author-help"
+                autocomplete="off"
+                data-error="The author is empty. The library records who wrote it. Type the author."
+              />
+              <span class="mark" aria-hidden="true"></span>
+            </span>
+            <span class="helper" id="author-help"></span>
+          </label>
+          <div class="pair">
+            <label>
+              Library name
+              <span class="field">
+                <input id="library-name" name="library" type="text" autocomplete="off" placeholder="Rejoice" />
+                <span class="mark" aria-hidden="true"></span>
+              </span>
+              <span class="helper" id="library-name-help"></span>
+            </label>
+            <label>
+              Page
+              <span class="field">
+                <input id="page" name="page" type="number" min="1" inputmode="numeric" placeholder="16" />
+                <span class="mark" aria-hidden="true"></span>
+              </span>
+              <span class="helper" id="page-help"></span>
+            </label>
+          </div>
+          <label>
+            Tags
+            <span class="field">
+              <input id="tags" name="tags" type="text" autocomplete="off" placeholder="Grace, Salvation" />
+              <span class="mark" aria-hidden="true"></span>
+            </span>
+            <span class="helper" id="tags-help"></span>
+          </label>
+          <label>
+            Reference link
+            <span class="field">
+              <input id="link" name="link" type="url" placeholder="https://" />
+              <span class="mark" aria-hidden="true"></span>
+            </span>
+            <span class="helper" id="link-help"></span>
+          </label>
+          <label>
+            Lyrics
+            <span class="field">
+              <textarea
+                id="lyrics"
+                name="lyrics"
+                rows="8"
+                required
+                aria-required="true"
+                aria-describedby="lyrics-help"
+                data-error="The lyrics are empty. Paste or type the words of the hymn."
+              ></textarea>
+              <span class="mark" aria-hidden="true"></span>
+            </span>
+            <span class="helper" id="lyrics-help"></span>
+          </label>
+          <p class="form-note" id="form-note" role="status"></p>
+        </form>
+      </section>
+
+      <section class="library reveal" id="library" style="--i: 1" aria-labelledby="list-heading">
+        <header class="head-hang">
+          <h2 id="list-heading">In the library</h2>
+          <button class="btn" type="button" id="refresh">Refresh</button>
+        </header>
+        <ul id="hymn-list" class="hymn-list" aria-busy="true"></ul>
+      </section>
+    </main>
+
+    <footer class="foot-line">
+      <p>Hymn desk · administrators</p>
+    </footer>
+
+    <div class="save-bar">
+      <button class="btn" type="submit" form="hymn-form" id="save">Save hymn</button>
+    </div>
+
+    <script src="/client.js" type="module"></script>
+  </body>
+</html>

@@ -1,0 +1,66 @@
+/* Garden · paper: light · display: roman-serif (Sentient) · accent: chromatic-other (leaf) */
+:root {
+  --color-paper: oklch(97.2% 0.012 145);
+  --color-paper-2: oklch(94.2% 0.018 145);
+  --color-paper-3: oklch(91% 0.02 145);
+  --color-rule: oklch(86% 0.014 145);
+  --color-rule-2: oklch(48% 0.035 150);
+  --color-neutral: oklch(46% 0.02 150);
+  --color-muted: oklch(34% 0.03 155);
+  --color-ink: oklch(24% 0.028 158);
+  --color-ink-2: oklch(32% 0.03 155);
+  --color-accent: oklch(42% 0.11 152);
+  --color-focus: oklch(40% 0.13 152);
+  --color-error: oklch(38% 0.14 28);
+  --color-success: oklch(38% 0.07 158);
+  --color-on-paper: oklch(97.2% 0.012 145);
+
+  --font-display: "Sentient", "Iowan Old Style", Palatino, "Palatino Linotype", serif;
+  --font-body: "Newsreader", "Iowan Old Style", Palatino, "Palatino Linotype", serif;
+
+  --space-3xs: 0.125rem;
+  --space-2xs: 0.25rem;
+  --space-xs: 0.5rem;
+  --space-sm: 0.75rem;
+  --space-md: 1rem;
+  --space-lg: 1.5rem;
+  --space-xl: 2.5rem;
+  --space-2xl: 4rem;
+  --space-3xl: 6rem;
+  --space-4xl: 9rem;
+  --page-gutter: clamp(1rem, 4vw, 4rem);
+  --control-height: 2.75rem;
+
+  --text-xs: 0.64rem;
+  --text-sm: 0.8rem;
+  --text-base: 1rem;
+  --text-md: 1.25rem;
+  --text-lg: 1.5625rem;
+  --text-xl: 1.9531rem;
+  --text-2xl: 2.4414rem;
+  --text-3xl: 3.0518rem;
+  --text-4xl: 3.8147rem;
+  --text-display: clamp(2.75rem, 5vw + 1rem, 5.25rem);
+  --text-display-s: clamp(2.2rem, 3vw + 1rem, 3.05rem);
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in: cubic-bezier(0.7, 0, 0.84, 0);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-micro: 120ms;
+  --dur-short: 220ms;
+  --dur-long: 420ms;
+
+  --radius-sm: 0;
+  --radius-md: 0;
+  --rule-hair: 1px;
+
+  --z-base: 1;
+  --z-raised: 10;
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-modal: 400;
+  --z-toast: 500;
+  --z-tooltip: 600;
+
+  color-scheme: light;
+}
