@@ -1,6 +1,6 @@
 # Hymn App
 
-A monorepo hymn reader MVP with a React Native (Expo SDK 54) mobile app, Fastify API, and PostgreSQL database.
+A monorepo hymn reader MVP with a React Native (Expo SDK 57) mobile app, Fastify API, and PostgreSQL database.
 
 ## Architecture
 

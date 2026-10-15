@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Image,
@@ -18,11 +18,12 @@ import {
   type NavigationProp,
   type RouteProp,
 } from "@react-navigation/native";
-import type { Hymn } from "@hymn-app/shared-types";
+import type { Hymn, HymnSummary } from "@hymn-app/shared-types";
 import type { ThemeColors } from "@hymn-app/shared-themes";
 import { fontSizes, palette, radii, spacing } from "@hymn-app/shared-themes";
+import { compareHymnsByLibraryAndPage } from "@hymn-app/shared-utils";
 import { SheetMusicViewerModal } from "../components/SheetMusicViewerModal";
-import { getHymn } from "../api";
+import { getHymn, getHymns } from "../api";
 import { useResponsiveLayout } from "../hooks/useResponsiveLayout";
 import { useThemedStyles } from "../hooks/useThemedStyles";
 import { useFavorites } from "../state/FavoritesContext";
@@ -33,6 +34,21 @@ import { computeContainedSize, computeWidthScaledSize } from "../utils/sheetMusi
 type ImageDetailRoute = RouteProp<RootStackParamList, "HymnImageDetail">;
 
 const PREVIEW_MAX_HEIGHT_RATIO = 0.45;
+
+function hymnNeighbors(catalog: HymnSummary[], current: Hymn) {
+  const libraryKey = current.library?.trim().toLowerCase() ?? "";
+  const ordered = catalog
+    .filter((item) => (item.library?.trim().toLowerCase() ?? "") === libraryKey)
+    .sort(compareHymnsByLibraryAndPage);
+
+  const index = ordered.findIndex((item) => item.id === current.id);
+  if (index < 0) return { previous: null, next: null };
+
+  return {
+    previous: index > 0 ? ordered[index - 1] : null,
+    next: index < ordered.length - 1 ? ordered[index + 1] : null,
+  };
+}
 
 function SheetMusicPage({
   uri,
@@ -129,19 +145,27 @@ export function HymnImageDetailScreen() {
     windowHeight * (layout.isTablet ? 0.55 : PREVIEW_MAX_HEIGHT_RATIO);
 
   const [hymn, setHymn] = useState<Hymn | null>(null);
+  const [catalog, setCatalog] = useState<HymnSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [failedPages, setFailedPages] = useState<number[]>([]);
   const [reloadKey, setReloadKey] = useState(0);
   const [viewerOpen, setViewerOpen] = useState(false);
   const [viewerIndex, setViewerIndex] = useState(0);
+  const [hymnSwipeBusy, setHymnSwipeBusy] = useState(false);
+  const hymnRef = useRef<Hymn | null>(null);
+  const hymnSwipeLock = useRef(false);
+  hymnRef.current = hymn;
 
-  const loadHymn = useCallback(async () => {
+  const loadHymn = useCallback(async (force = false) => {
+    if (!force && hymnRef.current?.id === hymnId) return;
+
     setLoading(true);
     setError(null);
     setFailedPages([]);
     try {
       const data = await getHymn(hymnId);
+      hymnRef.current = data;
       setHymn(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load hymn");
@@ -153,6 +177,48 @@ export function HymnImageDetailScreen() {
   useEffect(() => {
     loadHymn();
   }, [loadHymn]);
+
+  useEffect(() => {
+    getHymns().then(setCatalog).catch(() => setCatalog([]));
+  }, []);
+
+  const { previous, next } = useMemo(
+    () => (hymn ? hymnNeighbors(catalog, hymn) : { previous: null, next: null }),
+    [catalog, hymn],
+  );
+
+  const openNeighbor = useCallback(
+    async (start: HymnSummary, direction: -1 | 1) => {
+      if (hymnSwipeLock.current) return;
+      hymnSwipeLock.current = true;
+      setHymnSwipeBusy(true);
+      try {
+        const seen = new Set<string>();
+        let cursor: HymnSummary | null = start;
+
+        while (cursor && !seen.has(cursor.id)) {
+          seen.add(cursor.id);
+          const data = await getHymn(cursor.id);
+          if (data.imageUrls.length > 0) {
+            hymnRef.current = data;
+            setHymn(data);
+            setViewerIndex(0);
+            setFailedPages([]);
+            navigation.setParams({ hymnId: data.id });
+            return;
+          }
+          const neighbors = hymnNeighbors(catalog, data);
+          cursor = direction < 0 ? neighbors.previous : neighbors.next;
+        }
+      } catch {
+        // Keep the current sheet on screen when the next hymn cannot be loaded.
+      } finally {
+        hymnSwipeLock.current = false;
+        setHymnSwipeBusy(false);
+      }
+    },
+    [catalog, navigation],
+  );
 
   const favorite = isFavorite(hymnId);
   const imageUrls = hymn?.imageUrls ?? [];
@@ -257,7 +323,7 @@ export function HymnImageDetailScreen() {
       {error && (
         <View style={[styles.errorBox, { marginHorizontal: layout.screenPadding }]}>
           <Text style={styles.errorText}>{error}</Text>
-          <Pressable onPress={loadHymn} style={styles.retryButton}>
+          <Pressable onPress={() => loadHymn(true)} style={styles.retryButton}>
             <Text style={styles.retryText}>Retry</Text>
           </Pressable>
         </View>
@@ -335,9 +401,17 @@ export function HymnImageDetailScreen() {
 
       <SheetMusicViewerModal
         visible={viewerOpen}
+        hymnId={hymn?.id ?? hymnId}
+        title={hymn?.title ?? ""}
+        page={hymn?.page ?? null}
         imageUrls={imageUrls}
         initialIndex={viewerIndex}
+        busy={hymnSwipeBusy}
         onClose={() => setViewerOpen(false)}
+        onPreviousHymn={
+          previous ? () => openNeighbor(previous, -1) : undefined
+        }
+        onNextHymn={next ? () => openNeighbor(next, 1) : undefined}
       />
     </SafeAreaView>
   );

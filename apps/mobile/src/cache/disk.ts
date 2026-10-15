@@ -1,4 +1,4 @@
-import { getFreeDiskStorageAsync } from "expo-file-system/legacy";
+import { Paths } from "expo-file-system";
 import { CacheError } from "./errors";
 
 /** Rough per-hymn estimate (metadata + typical sheet images). */
@@ -11,7 +11,7 @@ export const SAFETY_BUFFER_BYTES = 50 * 1024 * 1024;
 export const DISK_RECHECK_EVERY = 5;
 
 export async function getFreeDiskBytes(): Promise<number> {
-  return getFreeDiskStorageAsync();
+  return Paths.availableDiskSpace;
 }
 
 export function estimateCacheBytes(hymnCount: number): number {

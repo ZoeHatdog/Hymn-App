@@ -23,14 +23,19 @@
   "dependencies": {
     "@prisma/client": "^6.1.0",
     "@react-native-async-storage/async-storage": "2.2.0",
-    "expo-file-system": "~19.0.23",
-    "react": "19.1.0",
-    "react-native": "0.81.5"
+    "expo-file-system": "~57.0.7",
+    "react": "19.2.3",
+    "react-native": "0.86.3",
+    "react-native-safe-area-context": "5.7.0",
+    "react-native-screens": "4.26.2"
   },
   "overrides": {
-    "react": "19.1.0",
-    "react-native": "0.81.5",
-    "@types/react": "19.1.0"
+    "react": "19.2.3",
+    "react-native": "0.86.3",
+    "@types/react": "~19.2.0",
+    "expo": "57.0.24",
+    "react-native-safe-area-context": "5.7.0",
+    "react-native-screens": "4.26.2"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

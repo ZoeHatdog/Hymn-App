@@ -8,3 +8,5 @@ dist/
 docs/
 .idea/
 data/
+global-bundle.pem
+/web-app/certificates/

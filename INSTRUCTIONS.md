@@ -8,9 +8,9 @@ Hymn App is a minimum viable product for browsing and reading hymn lyrics and sh
 
 ## Prerequisites
 
-- **Node.js** 20.19+ and npm (required for Expo SDK 54)
+- **Node.js** 22.13+ and npm (required for Expo SDK 57)
 - **PostgreSQL** installed locally (Docker is optional and not required for this MVP)
-- **Expo Go** app on your phone with **SDK 54** support (optional, for device testing)
+- **Expo Go** app on your phone with **SDK 57** support (optional, for device testing)
 
 ---
 

@@ -1,11 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  FlatList,
   Image,
   Modal,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -15,6 +13,13 @@ import {
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
+import {
+  FlatList,
+  PanGestureHandler,
+  ScrollView,
+  State,
+  type PanGestureHandlerStateChangeEvent,
+} from "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { colors, fontSizes, radii, spacing } from "@hymn-app/shared-themes";
 import { ZoomableImage } from "./ZoomableImage";
@@ -27,9 +32,15 @@ import {
 
 interface SheetMusicViewerModalProps {
   visible: boolean;
+  hymnId: string;
+  title: string;
+  page: number | null;
   imageUrls: string[];
   initialIndex: number;
   onClose: () => void;
+  onPreviousHymn?: () => void;
+  onNextHymn?: () => void;
+  busy?: boolean;
 }
 
 function ViewerPageImage({
@@ -142,13 +153,22 @@ function ScrollableSheetImage({
 
 export function SheetMusicViewerModal({
   visible,
+  hymnId,
+  title,
+  page,
   imageUrls,
   initialIndex,
   onClose,
+  onPreviousHymn,
+  onNextHymn,
+  busy = false,
 }: SheetMusicViewerModalProps) {
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const listRef = useRef<FlatList<string>>(null);
+  const panRef = useRef(null);
+  const offsetX = useRef(0);
+  const openedForHymn = useRef<string | null>(null);
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [isZoomed, setIsZoomed] = useState(false);
   const [pageResetKey, setPageResetKey] = useState(0);
@@ -157,40 +177,55 @@ export function SheetMusicViewerModal({
   const isScrollableSinglePage = totalPages === 1;
   const hasMultiplePages = totalPages > 1;
   const canSwipePages = hasMultiplePages && !isZoomed;
+  const onFirstImage = isScrollableSinglePage || currentIndex === 0;
+  const onLastImage = isScrollableSinglePage || currentIndex >= totalPages - 1;
+  const showPreviousPage = canSwipePages && currentIndex > 0;
+  const showNextPage = canSwipePages && currentIndex < totalPages - 1;
+  const showPreviousHymn = !isZoomed && !busy && onFirstImage && !!onPreviousHymn;
+  const showNextHymn = !isZoomed && !busy && onLastImage && !!onNextHymn;
 
   const topChrome = insets.top + MIN_TOUCH_TARGET + spacing.md;
   const bottomChrome = insets.bottom + spacing.lg;
   const viewerHeight = windowHeight - topChrome - bottomChrome;
   const scrollableContentWidth = windowWidth - spacing.lg * 2;
+  const hymnLabel =
+    page != null && title ? `${page} · ${title}` : title;
 
   useEffect(() => {
     if (!visible) {
       setIsZoomed(false);
+      openedForHymn.current = null;
       return;
     }
 
-    setCurrentIndex(initialIndex);
+    const hymnChanged =
+      openedForHymn.current !== null && openedForHymn.current !== hymnId;
+    openedForHymn.current = hymnId;
+
+    const index = hymnChanged ? 0 : initialIndex;
+    setCurrentIndex(index);
     setIsZoomed(false);
     setPageResetKey((key) => key + 1);
-    if (!isScrollableSinglePage) {
+    offsetX.current = index * windowWidth;
+
+    if (imageUrls.length > 1) {
       requestAnimationFrame(() => {
-        listRef.current?.scrollToIndex({
-          index: initialIndex,
-          animated: false,
-        });
+        listRef.current?.scrollToIndex({ index, animated: false });
       });
     }
-  }, [visible, initialIndex, isScrollableSinglePage]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- keep the current image across rotation
+  }, [visible, initialIndex, hymnId, imageUrls.length]);
 
   const goToPage = useCallback(
     (index: number) => {
       const clamped = Math.max(0, Math.min(index, totalPages - 1));
       setIsZoomed(false);
       setPageResetKey((key) => key + 1);
+      offsetX.current = clamped * windowWidth;
       listRef.current?.scrollToIndex({ index: clamped, animated: true });
       setCurrentIndex(clamped);
     },
-    [totalPages],
+    [totalPages, windowWidth],
   );
 
   const onMomentumScrollEnd = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -205,6 +240,37 @@ export function SheetMusicViewerModal({
   const handleZoomChange = useCallback((zoomed: boolean) => {
     setIsZoomed(zoomed);
   }, []);
+
+  const onHorizontalScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    offsetX.current = event.nativeEvent.contentOffset.x;
+  };
+
+  const handleHymnSwipe = useCallback(
+    (event: PanGestureHandlerStateChangeEvent) => {
+      if (event.nativeEvent.state !== State.END || isZoomed || busy) return;
+
+      const { translationX, velocityX } = event.nativeEvent;
+      const swipeLeft = translationX < -70 || velocityX < -800;
+      const swipeRight = translationX > 70 || velocityX > 800;
+      const atFirst =
+        isScrollableSinglePage || offsetX.current <= windowWidth * 0.15;
+      const atLast =
+        isScrollableSinglePage ||
+        offsetX.current >= windowWidth * (totalPages - 1 - 0.15);
+
+      if (swipeLeft && atLast) onNextHymn?.();
+      else if (swipeRight && atFirst) onPreviousHymn?.();
+    },
+    [
+      isZoomed,
+      busy,
+      isScrollableSinglePage,
+      windowWidth,
+      totalPages,
+      onNextHymn,
+      onPreviousHymn,
+    ],
+  );
 
   return (
     <Modal
@@ -222,6 +288,24 @@ export function SheetMusicViewerModal({
           accessibilityRole="button"
           accessibilityLabel="Close sheet music viewer"
         />
+
+        {hymnLabel.length > 0 && (
+          <View
+            style={[
+              styles.hymnLabel,
+              {
+                top: insets.top + spacing.sm,
+                left: insets.left + spacing.md,
+                right: insets.right + MIN_TOUCH_TARGET + spacing.lg,
+              },
+            ]}
+            pointerEvents="none"
+          >
+            <Text style={styles.hymnLabelText} numberOfLines={1}>
+              {hymnLabel}
+            </Text>
+          </View>
+        )}
 
         <Pressable
           onPress={onClose}
@@ -244,84 +328,132 @@ export function SheetMusicViewerModal({
           pointerEvents="box-none"
         >
           {isScrollableSinglePage ? (
-            <ScrollView
-              style={styles.scrollableViewer}
-              contentContainerStyle={styles.scrollableContent}
-              showsVerticalScrollIndicator
-              bounces
+            <PanGestureHandler
+              ref={panRef}
+              enabled={!isZoomed && !busy}
+              activeOffsetX={[-24, 24]}
+              failOffsetY={[-18, 18]}
+              onHandlerStateChange={handleHymnSwipe}
             >
-              <ScrollableSheetImage
-                uri={imageUrls[0]}
-                contentWidth={scrollableContentWidth}
-              />
-            </ScrollView>
-          ) : (
-            <>
-              <FlatList
-                ref={listRef}
-                data={imageUrls}
-                keyExtractor={(uri, index) => `${uri}-${index}`}
-                horizontal
-                pagingEnabled
-                showsHorizontalScrollIndicator={false}
-                bounces={canSwipePages}
-                scrollEnabled={canSwipePages}
-                initialScrollIndex={initialIndex}
-                getItemLayout={(_, index) => ({
-                  length: windowWidth,
-                  offset: windowWidth * index,
-                  index,
-                })}
-                onMomentumScrollEnd={onMomentumScrollEnd}
-                onScrollToIndexFailed={(info) => {
-                  requestAnimationFrame(() => {
-                    listRef.current?.scrollToOffset({
-                      offset: info.averageItemLength * info.index,
-                      animated: false,
-                    });
-                  });
-                }}
-                renderItem={({ item }) => (
-                  <ViewerPageImage
-                    uri={item}
-                    pageWidth={windowWidth}
-                    availableHeight={viewerHeight}
-                    resetTrigger={pageResetKey}
-                    onZoomChange={handleZoomChange}
+              <View style={styles.flexFill} collapsable={false}>
+                <ScrollView
+                  simultaneousHandlers={panRef}
+                  style={styles.scrollableViewer}
+                  contentContainerStyle={styles.scrollableContent}
+                  showsVerticalScrollIndicator
+                  bounces
+                >
+                  <ScrollableSheetImage
+                    uri={imageUrls[0]}
+                    contentWidth={scrollableContentWidth}
                   />
-                )}
-              />
+                </ScrollView>
+              </View>
+            </PanGestureHandler>
+          ) : (
+            <PanGestureHandler
+              ref={panRef}
+              enabled={!isZoomed && !busy}
+              activeOffsetX={[-24, 24]}
+              failOffsetY={[-18, 18]}
+              onHandlerStateChange={handleHymnSwipe}
+            >
+              <View style={styles.flexFill} collapsable={false}>
+                <FlatList
+                  ref={listRef}
+                  simultaneousHandlers={panRef}
+                  style={styles.flexFill}
+                  data={imageUrls}
+                  keyExtractor={(uri, index) => `${uri}-${index}`}
+                  horizontal
+                  pagingEnabled
+                  showsHorizontalScrollIndicator={false}
+                  bounces={canSwipePages}
+                  scrollEnabled={canSwipePages}
+                  initialScrollIndex={initialIndex}
+                  getItemLayout={(_, index) => ({
+                    length: windowWidth,
+                    offset: windowWidth * index,
+                    index,
+                  })}
+                  onScroll={onHorizontalScroll}
+                  scrollEventThrottle={16}
+                  onMomentumScrollEnd={onMomentumScrollEnd}
+                  onScrollToIndexFailed={(info) => {
+                    requestAnimationFrame(() => {
+                      listRef.current?.scrollToOffset({
+                        offset: info.averageItemLength * info.index,
+                        animated: false,
+                      });
+                    });
+                  }}
+                  renderItem={({ item }) => (
+                    <ViewerPageImage
+                      uri={item}
+                      pageWidth={windowWidth}
+                      availableHeight={viewerHeight}
+                      resetTrigger={pageResetKey}
+                      onZoomChange={handleZoomChange}
+                    />
+                  )}
+                />
+              </View>
+            </PanGestureHandler>
+          )}
 
-              {canSwipePages && currentIndex > 0 && (
-                <Pressable
-                  onPress={() => goToPage(currentIndex - 1)}
-                  style={[
-                    styles.arrowButton,
-                    { left: insets.left + spacing.sm },
-                  ]}
-                  accessibilityRole="button"
-                  accessibilityLabel="Previous page"
-                >
-                  <Ionicons name="chevron-back" size={28} color={colors.textPrimary} />
-                </Pressable>
-              )}
+          {showPreviousPage && (
+            <Pressable
+              onPress={() => goToPage(currentIndex - 1)}
+              style={[styles.arrowButton, { left: insets.left + spacing.sm }]}
+              accessibilityRole="button"
+              accessibilityLabel="Previous page"
+            >
+              <Ionicons name="chevron-back" size={28} color={colors.textPrimary} />
+            </Pressable>
+          )}
 
-              {canSwipePages && currentIndex < totalPages - 1 && (
-                <Pressable
-                  onPress={() => goToPage(currentIndex + 1)}
-                  style={[
-                    styles.arrowButton,
-                    { right: insets.right + spacing.sm },
-                  ]}
-                  accessibilityRole="button"
-                  accessibilityLabel="Next page"
-                >
-                  <Ionicons name="chevron-forward" size={28} color={colors.textPrimary} />
-                </Pressable>
-              )}
-            </>
+          {showNextPage && (
+            <Pressable
+              onPress={() => goToPage(currentIndex + 1)}
+              style={[styles.arrowButton, { right: insets.right + spacing.sm }]}
+              accessibilityRole="button"
+              accessibilityLabel="Next page"
+            >
+              <Ionicons name="chevron-forward" size={28} color={colors.textPrimary} />
+            </Pressable>
+          )}
+
+          {showPreviousHymn && (
+            <Pressable
+              onPress={onPreviousHymn}
+              style={[styles.arrowButton, { left: insets.left + spacing.sm }]}
+              accessibilityRole="button"
+              accessibilityLabel="Previous hymn"
+            >
+              <Ionicons name="chevron-back" size={28} color={colors.textPrimary} />
+            </Pressable>
+          )}
+
+          {showNextHymn && (
+            <Pressable
+              onPress={onNextHymn}
+              style={[styles.arrowButton, { right: insets.right + spacing.sm }]}
+              accessibilityRole="button"
+              accessibilityLabel="Next hymn"
+            >
+              <Ionicons name="chevron-forward" size={28} color={colors.textPrimary} />
+            </Pressable>
           )}
         </View>
+
+        {busy && (
+          <View
+            style={[styles.busyBadge, { bottom: insets.bottom + spacing.lg }]}
+            pointerEvents="none"
+          >
+            <ActivityIndicator color={colors.textPrimary} />
+          </View>
+        )}
 
         {hasMultiplePages && (
           <View
@@ -348,6 +480,28 @@ const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
     backgroundColor: "rgba(0, 0, 0, 0.92)",
+  },
+  flexFill: {
+    flex: 1,
+  },
+  hymnLabel: {
+    position: "absolute",
+    zIndex: 10,
+    height: MIN_TOUCH_TARGET,
+    justifyContent: "center",
+  },
+  hymnLabelText: {
+    color: colors.textPrimary,
+    fontSize: fontSizes.md,
+    fontWeight: "600",
+  },
+  busyBadge: {
+    position: "absolute",
+    alignSelf: "center",
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radii.md,
+    backgroundColor: "rgba(0, 0, 0, 0.55)",
   },
   closeButton: {
     position: "absolute",
@@ -382,7 +536,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   pageLoading: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     alignItems: "center",
     justifyContent: "center",
   },
