@@ -67,7 +67,7 @@ function fileExistsAtUri(uri: string): boolean {
 
 function writeLyricsToDir(dir: Directory, lyrics: string): void {
   const file = lyricsFile(dir);
-  file.write(lyrics);
+  file.writeSync(lyrics);
   if (!file.exists) {
     throw new CacheError("storage", "Failed to write hymn lyrics file.");
   }
