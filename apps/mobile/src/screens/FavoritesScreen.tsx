@@ -94,7 +94,7 @@ export function FavoritesScreen() {
               <View style={styles.warningBox}>
                 <Text style={styles.warningText}>{warning}</Text>
               </View>
-            ) : null
+            ) : undefined
           }
           ListEmptyComponent={
             <View style={styles.empty}>

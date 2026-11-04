@@ -9,8 +9,18 @@ const monorepoModules = path.resolve(monorepoRoot, "node_modules");
 /** @type {import('expo/metro-config').MetroConfig} */
 const config = getDefaultConfig(projectRoot);
 
-config.watchFolders = [monorepoRoot];
-config.resolver.nodeModulesPaths = [mobileModules, monorepoModules];
+const watchFolders = new Set(
+  (config.watchFolders ?? []).map((folder) => path.resolve(folder)),
+);
+watchFolders.add(monorepoRoot);
+config.watchFolders = [...watchFolders];
+config.resolver.nodeModulesPaths = [
+  ...new Set(
+    [...(config.resolver.nodeModulesPaths ?? []), mobileModules, monorepoModules].map(
+      (folder) => path.resolve(folder),
+    ),
+  ),
+];
 
 const singletonModulePattern =
   /^react(\/|$)|^react-native(\/|$)|^@react-native\/|^react-native-gesture-handler(\/|$)/;
